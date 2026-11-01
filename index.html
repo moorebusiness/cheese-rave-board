@@ -593,23 +593,23 @@ async function poll(){
   failCount = ok.length === got.length ? 0 : failCount + 1;
   pickSource();
   if (SRC === 'civic'){ ok.forEach(g => ingest(g.value)); if (ok.length) lastOk = new Date(); }
-  refresh(); setStatus();
+  refresh(); setStatus(); postState();
   cycle++;
   schedulePoll(POLL_S * 1000);   // every minute, failing or not, so the board notices civicAPI coming back
 }
 
 // ----- backup results: ElectionHub -----
-// If civicAPI fails three checks in a row (about three minutes), the board reads ElectionHub instead for the races it
-// carries, and goes back to civicAPI on its own once civicAPI answers again. E switches to the backup by hand (and back).
+// Manual only: the board never switches by itself. E switches to ElectionHub for the races it carries, and E again
+// switches back to civicAPI. (Cue for the booth: the status chip turning pink, "RESULTS DELAYED", or a race that's
+// plainly stuck.)
 // ElectionHub publishes from a public GitHub repo; its race calls are AP's and Decision Desk's as reported. It carries
 // most Oklahoma statewide races, every legislative seat, SQ 845 and the national battlegrounds, but not OK-5, SQ 847,
 // the U.S. Senate race or the county races: those hold their last numbers while the backup is on.
 const EH_BASES = ['https://electionhub.org/', 'https://raw.githubusercontent.com/jordanzakarin-lab/electionhub/main/'];
 const EH_FILES = ['data.json', 'statewide/data.json', 'states/governors.json', 'states/data.json', 'initiatives/data.json'];
-const FAILOVER_AFTER = 3;
 let SRC = 'civic', forceEH = false, ehT = null, ehOk = null, ehFails = 0, ehBase = 0, ehApplied = 0;
 function pickSource(){
-  const want = MODE === 'live' && (forceEH || failCount >= FAILOVER_AFTER) ? 'eh' : 'civic';
+  const want = MODE === 'live' && forceEH ? 'eh' : 'civic';
   if (want === SRC) return;
   SRC = want; setCredit(); setStatus(); postState();
   $('bSrc').setAttribute('aria-pressed', SRC === 'eh');
@@ -1411,7 +1411,7 @@ function postState(){
   try { ctlWin.postMessage({cr:'state', scene, t10Step, next:t10Next(), title:ttlIdx >= 0 ? TITLES[ttlIdx].text : '', mode:MODE,
     spon:sponStep, sponNext:sponNext(), loop:sponLoop, sponN:SPONSORS.length, active:activeCue(), beat:beatLabel(), beatOn:BEAT.mode !== 'off', src:srcLabel(), srcOn:SRC === 'eh'}, '*'); } catch (e) {}
 }
-function srcLabel(){ return MODE !== 'live' ? 'not used in ' + MODE + ' mode' : SRC === 'civic' ? 'off: civicAPI' : forceEH ? 'on (switched by hand)' : 'on: civicAPI not answering'; }
+function srcLabel(){ return MODE !== 'live' ? 'not used in ' + MODE + ' mode' : SRC === 'eh' ? 'on: ElectionHub (press E to go back)' : failCount ? 'off: civicAPI NOT ANSWERING' : 'off: civicAPI'; }
 // which run-of-show cue is on screen right now (-1: none)
 function activeCue(){ return CUES.findIndex(c => c.sponsor != null ? c.sponsor === sponStep : c.title != null ? c.title === ttlIdx : !!c.top10 && t10Step >= 0); }
 addEventListener('message', e => {

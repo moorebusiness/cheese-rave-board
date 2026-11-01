@@ -37,7 +37,7 @@ Nothing switches on its own. The page opens on the home screen; press **R** for 
 
 Live results come from [civicAPI](https://civicapi.org) and refresh every minute. Seat charts count the way DDHQ does: seats not on the ballot, plus each Senate and House race called tonight.
 
-**Backup:** if civicAPI fails three checks in a row (about three minutes), the board switches itself to [ElectionHub](https://electionhub.org) for the races it carries and switches back when civicAPI answers again; the credit line shows which source is on. ElectionHub doesn't carry OK-5, SQ 847, the U.S. Senate race or the county races, so those hold their last numbers while the backup is on. If electionhub.org itself is down, the board reads the same files from ElectionHub's GitHub repository.
+**Backup:** press **E** to switch to [ElectionHub](https://electionhub.org) for the races it carries, and **E** again to switch back. The board never switches on its own. The cue is the status chip turning pink ("RESULTS DELAYED") or a race that's plainly stuck. The credit line shows which source is on. ElectionHub doesn't carry OK-5, SQ 847, the U.S. Senate race or the county races, so those hold their last numbers while the backup is on. If electionhub.org itself is down, the board reads the same files from ElectionHub's GitHub repository.
 
 - Add `#rehearse` to the address to replay the Aug. 25, 2026 runoff results.
 - Add `#sample` for invented numbers (demos only).
