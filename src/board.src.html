@@ -191,7 +191,7 @@ html:fullscreen body{padding-left:0;padding-right:0}   /* full screen: the slide
 #ttl .shine{position:absolute;inset:0;pointer-events:none;opacity:0;
   background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);mix-blend-mode:overlay}
 /* phone pushes: four tiles flip away and a panel flips in with the photo or clip, square and tinted to the board's colors */
-.mpanel{position:absolute;z-index:3;border-radius:10px;overflow:hidden;display:grid;grid-template-columns:auto 1fr;align-items:stretch;
+.mpanel{position:absolute;z-index:3;border-radius:10px;overflow:hidden;display:grid;place-items:center;
   background:var(--mbg);color:var(--white);transform-origin:50% 50%;box-shadow:0 30px 90px rgba(0,0,0,.5)}
 .mpanel.t{--mbg:#0C4E56;--macc:#27C6C4} .mpanel.p{--mbg:#6a1f48;--macc:#FF5AA8}
 .mpanel .mbox{position:relative;margin:14px;aspect-ratio:1;overflow:hidden;border-radius:6px;background:#000}
@@ -199,10 +199,6 @@ html:fullscreen body{padding-left:0;padding-right:0}   /* full screen: the slide
 .mpanel.t .mbox img,.mpanel.t .mbox video{filter:url(#duoT)} .mpanel.p .mbox img,.mpanel.p .mbox video{filter:url(#duoP)}
 .mpanel .mbox::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 3px var(--macc);border-radius:6px;
   background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0 2px,transparent 2px 4px)}
-.mpanel .mtxt{display:grid;align-content:center;gap:12px;padding:20px 26px 20px 8px;min-width:0}
-.mpanel .mpk{font:600 15px var(--mono);letter-spacing:.2em;color:var(--gold)}
-.mpanel .mpn{font:900 64px/.95 var(--display);text-transform:uppercase;letter-spacing:.01em;overflow-wrap:anywhere;max-height:3em;overflow:hidden}
-.mpanel .mpt{font:500 14px var(--mono);letter-spacing:.16em;color:var(--macc)}
 /* sponsor slides: logos on white cards over a dimmed screen. They sit above both the home screen and the board,
    and keep clear of the bottom of the screen, where the band and DJ stand during the rave. */
 #spon{position:absolute;inset:0;z-index:15;pointer-events:none;opacity:0;transition:opacity .6s ease}
@@ -979,7 +975,7 @@ async function showBoard(){
 // The phone uploads to a private topic on ntfy.sh, a free public relay; the board listens to the same topic. The topic
 // code is never in this file: the booth opens the board with ?push=CODE (remembered after that). On the rave board, four
 // unpinned tiles in a 2x2 block flip away and a panel flips in with the photo or clip, cropped square and tinted to the
-// board's turquoise or pink. Calls and the Congress board go first; pushes wait their turn, and anything sent during
+// board's turquoise or pink (no names: just the picture). Calls and the Congress board go first; pushes wait their turn, and anything sent during
 // the show waits for the rave board. X skips what's showing, M pauses (and resumes) pushes.
 const PUSH_RELAY = 'https://ntfy.sh/';
 const PUSH_CODE = (() => { const q = new URLSearchParams(location.search).get('push');
@@ -1006,7 +1002,7 @@ function pushListen(){
     const a = m.attachment;
     if (MEDIA.seen.has(m.id) || pushDone.has(m.id) || !a || typeof a.url !== 'string' || !/^(image|video)\//.test(a.type || '')) return;
     MEDIA.seen.add(m.id);
-    MEDIA.queue.push({id:m.id, url:a.url, video:/^video\//.test(a.type), name:String(m.title || '').trim().slice(0, 40), at:m.time ? m.time * 1000 : Date.now()});
+    MEDIA.queue.push({id:m.id, url:a.url, video:/^video\//.test(a.type), at:m.time ? m.time * 1000 : Date.now()});
     while (MEDIA.queue.length > 15) markDone(MEDIA.queue.shift().id);   // a flood keeps only the newest 15
     postState(); mediaPump();
   };
@@ -1060,11 +1056,9 @@ async function showMedia(item){
     const panel = document.createElement('div');
     panel.className = 'mpanel ' + tone;
     Object.assign(panel.style, {left:a.x + 'px', top:a.y + 'px', width:(z.x + z.w - a.x) + 'px', height:(z.y + z.h - a.y) + 'px'});
-    panel.innerHTML = '<div class="mbox"></div><div class="mtxt"><div class="mpk">SENT IN BY</div><div class="mpn"></div><div class="mpt"></div></div>';
+    panel.innerHTML = '<div class="mbox"></div>';   // just the square photo or clip, centered
     panel.querySelector('.mbox').style.width = (z.y + z.h - a.y - 28) + 'px';
     panel.querySelector('.mbox').appendChild(el);
-    panel.querySelector('.mpn').textContent = item.name || 'THE CROWD';
-    panel.querySelector('.mpt').textContent = (item.video ? 'VIDEO' : 'PHOTO') + ' · ' + hhmm(new Date(item.at));
     // tiles flip away in a cascade, then the panel flips in
     await Promise.all(blk.map((s, k) => flipOut(s.el, [0, 90, 90, 180][k])));
     blk.forEach(s => { s.el.style.visibility = 'hidden'; });
@@ -1099,7 +1093,7 @@ async function showMedia(item){
 }
 function mediaLabel(){
   if (!PUSH_CODE) return 'off (open the board with ?push=CODE)';
-  return (MEDIA.paused ? 'paused' : MEDIA.connected ? 'on' : 'connecting…') + (MEDIA.now ? ' · showing ' + (MEDIA.now.name || 'the crowd') : '')
+  return (MEDIA.paused ? 'paused' : MEDIA.connected ? 'on' : 'connecting…') + (MEDIA.now ? ' · showing a ' + (MEDIA.now.video ? 'video' : 'photo') : '')
     + (MEDIA.queue.length ? ' · ' + MEDIA.queue.length + ' waiting' : '');
 }
 pushListen();
@@ -1633,7 +1627,7 @@ addEventListener('keydown', e => {
 
 // Read-only peek at a race's state, for testing and for cueing from the browser console.
 window.cheeseBoard = {act: (a, arg) => act[a] && act[a](arg), seats: () => ({ours:tally(), civicapi:CIV_SEATS, listed:{S:NAT.S.size, H:NAT.H.size}}),
-  media: () => ({code:!!PUSH_CODE, connected:MEDIA.connected, paused:MEDIA.paused, waiting:MEDIA.queue.length, showing:MEDIA.now && MEDIA.now.name, shown:MEDIA.shown, on:mediaOn, label:mediaLabel()}),
+  media: () => ({code:!!PUSH_CODE, connected:MEDIA.connected, paused:MEDIA.paused, waiting:MEDIA.queue.length, showing:MEDIA.now && (MEDIA.now.video ? 'video' : 'photo'), shown:MEDIA.shown, on:mediaOn, label:mediaLabel()}),
   source: () => ({src:SRC, forced:forceEH, failCount, ehOk:ehOk && ehOk.toISOString(), ehFails, ehApplied, credit:document.querySelector('.credit').textContent}),
   beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
 

@@ -16,10 +16,8 @@ main{max-width:460px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 2
 h1{font:900 44px/.95 var(--display);text-transform:uppercase;margin:0 0 6px;letter-spacing:.01em}
 h1 span{color:var(--teal)}
 .sub{color:var(--muted);margin:0 0 20px;font-size:14px}
-label{display:block;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
-input[type=text]{width:100%;font:600 18px system-ui,sans-serif;color:var(--white);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 14px}
-input[type=text]:focus-visible,button:focus-visible,.pick:focus-within{outline:2px solid var(--pink);outline-offset:2px}
-.pick{position:relative;display:grid;place-items:center;margin:18px 0 0;aspect-ratio:1;border-radius:14px;border:2px dashed var(--line);
+button:focus-visible,.pick:focus-within{outline:2px solid var(--pink);outline-offset:2px}
+.pick{position:relative;display:grid;place-items:center;margin:4px 0 0;aspect-ratio:1;border-radius:14px;border:2px dashed var(--line);
   background:var(--panel);overflow:hidden;cursor:pointer;text-align:center}
 .pick input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .pick .hint{font:900 30px/1 var(--display);text-transform:uppercase;color:var(--teal);padding:16px}
@@ -53,9 +51,6 @@ button.send:disabled{background:#3a4a4d;color:#7d9093;cursor:default}
   <div id="locked" class="locked" hidden>This page needs the push link from the show's organizers. Open the link they sent you.</div>
 
   <form id="form" hidden>
-    <label for="name">Your name, as it shows on screen</label>
-    <input type="text" id="name" maxlength="40" autocomplete="nickname" placeholder="e.g. Andy">
-
     <div class="pick" id="pick">
       <input type="file" id="file" accept="image/*,video/*" aria-label="Choose a photo or video">
       <div class="hint" id="hint">Choose a photo or video<small>It shows on the board square, in the screen's colors</small></div>
@@ -79,8 +74,6 @@ button.send:disabled{background:#3a4a4d;color:#7d9093;cursor:default}
   if (code) { store.set('crPushCode', code); history.replaceState(null, '', location.pathname); } else code = store.get('crPushCode');
   if (!/^[A-Za-z0-9_-]{6,64}$/.test(code)) { $('locked').hidden = false; return; }
   $('form').hidden = false;
-  $('name').value = store.get('crPushName');
-  $('name').addEventListener('input', () => store.set('crPushName', $('name').value.trim()));
 
   let ready = null;   // {blob, filename}
   const info = (t, bad) => { $('info').textContent = t; $('info').className = 'info' + (bad ? ' bad' : ''); };
@@ -127,8 +120,7 @@ button.send:disabled{background:#3a4a4d;color:#7d9093;cursor:default}
   $('form').addEventListener('submit', e => {
     e.preventDefault();
     if (!ready) return;
-    const name = $('name').value.trim().slice(0, 40);
-    const q = new URLSearchParams({filename:ready.filename}); if (name) q.set('title', name);
+    const q = new URLSearchParams({filename:ready.filename});
     const x = new XMLHttpRequest();
     x.open('PUT', RELAY + encodeURIComponent('cheeserave-' + code) + '?' + q);
     x.upload.onprogress = ev => { if (ev.lengthComputable) $('barI').style.width = (100 * ev.loaded / ev.total).toFixed(0) + '%'; };
