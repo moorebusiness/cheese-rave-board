@@ -1003,9 +1003,11 @@ function pushListen(){
     if (!m || m.event !== 'message' || !m.id) return;
     MEDIA.lastId = m.id;
     const a = m.attachment;
-    if (MEDIA.seen.has(m.id) || pushDone.has(m.id) || !a || typeof a.url !== 'string' || !/^(image|video)\//.test(a.type || '')) return;
-    MEDIA.seen.add(m.id);
+    if (!a || typeof a.url !== 'string' || !/^(image|video)\//.test(a.type || '')) return;
     const at = m.time ? m.time * 1000 : Date.now();
+    if (at >= pushFloor()) archiveAdd(m);   // saved to Drive whether or not it gets shown
+    if (MEDIA.seen.has(m.id) || pushDone.has(m.id)) return;
+    MEDIA.seen.add(m.id);
     if (at < pushFloor()){ markDone(m.id); return; }
     MEDIA.queue.push({id:m.id, url:a.url, video:/^video\//.test(a.type), at});
     while (MEDIA.queue.length > 15) markDone(MEDIA.queue.shift().id);   // a flood keeps only the newest 15
@@ -1100,7 +1102,55 @@ async function showMedia(item){
 function mediaLabel(){
   if (!PUSH_CODE) return 'off (open the board with ?push=CODE)';
   return (MEDIA.paused ? 'paused' : MEDIA.connected ? 'on' : 'connecting…') + (MEDIA.now ? ' · showing a ' + (MEDIA.now.video ? 'video' : 'photo') : '')
-    + (MEDIA.queue.length ? ' · ' + MEDIA.queue.length + ' waiting' : '');
+    + (MEDIA.queue.length ? ' · ' + MEDIA.queue.length + ' waiting' : '') + archLabel();
+}
+
+// ----- Drive archive: every push this board receives also goes to a small Google Apps Script in Andy's Drive
+// (src/drive-archive.gs), which saves the original, untinted file to a "Cheese Rave pushes" folder. Open the board
+// once with ?archive=<deployment ID> (remembered after that; ?archive=off forgets it). Without it, nothing is saved.
+const ARCHIVE = (() => { const q = new URLSearchParams(location.search).get('archive'); let v = '';
+  try { if (q === 'off') localStorage.removeItem('crArchive'); else if (q) localStorage.setItem('crArchive', q); v = q === 'off' ? '' : q || localStorage.getItem('crArchive') || ''; }
+  catch (e) { v = q === 'off' ? '' : q || ''; }
+  return /^[A-Za-z0-9_-]{20,120}$/.test(v) ? 'https://script.google.com/macros/s/' + v + '/exec' : ''; })();
+const ARCH = {todo:[], busy:false, saved:0, error:'',
+  done:(() => { try { return new Set(JSON.parse(localStorage.getItem('crArchived') || '[]')); } catch (e) { return new Set(); } })()};
+function archLabel(){
+  if (!ARCHIVE) return '';
+  return ' · Drive: ' + (ARCH.error ? 'NOT SAVING (' + ARCH.error + ')' : ARCH.saved ? ARCH.saved + ' saved' : 'ready') + (ARCH.todo.length ? ', ' + ARCH.todo.length + ' to save' : '');
+}
+function archiveAdd(m){
+  if (!ARCHIVE || ARCH.done.has(m.id) || ARCH.todo.some(x => x.id === m.id)) return;
+  ARCH.todo.push({id:m.id, url:m.attachment.url, type:m.attachment.type, time:m.time || Math.floor(Date.now() / 1000), tries:0});
+  postState(); archiveRun();
+}
+function archivePost(body){   // a plain-text POST (no preflight); Apps Script answers with JSON after a redirect
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 120000);
+  return fetch(ARCHIVE, {method:'POST', body:JSON.stringify(body), signal:ctl.signal}).then(r => r.json()).finally(() => clearTimeout(to));
+}
+const b64 = blob => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = rej; fr.readAsDataURL(blob); });
+async function archiveRun(){
+  if (ARCH.busy || !ARCH.todo.length) return;
+  ARCH.busy = true;
+  const x = ARCH.todo[0], base = {key:PUSH_CODE, id:x.id, type:x.type, time:x.time};
+  let r = null;
+  try {
+    r = await archivePost(Object.assign({url:x.url}, base));
+    if (r && !r.ok && /^relay/.test(r.error || '')){   // Google couldn't get the file from the relay: send it from here
+      const blob = await fetch(x.url).then(res => res.ok ? res.blob() : null).catch(() => null);
+      if (blob) r = await archivePost(Object.assign({data:await b64(blob)}, base));
+    }
+  } catch (e) { r = null; }
+  const expired = Date.now() > x.time * 1000 + 175 * 60000;   // the relay deletes files after 3 hours
+  if (r && r.ok){
+    ARCH.todo.shift(); ARCH.done.add(x.id); if (r.saved) ARCH.saved++; ARCH.error = '';
+    try { localStorage.setItem('crArchived', JSON.stringify([...ARCH.done].slice(-500))); } catch (e) {}
+  } else if ((r && !r.retry) || expired){
+    ARCH.todo.shift(); ARCH.error = r && r.error ? String(r.error).slice(0, 40) : 'gave up on one';
+  } else {
+    x.tries++; ARCH.error = x.tries >= 3 ? (r && r.error ? String(r.error).slice(0, 40) : 'can’t reach Google') : '';
+  }
+  ARCH.busy = false; postState();
+  if (ARCH.todo.length) setTimeout(archiveRun, r && r.ok ? 300 : Math.min(120, 10 * 2 ** Math.min(x.tries - 1, 3)) * 1000);
 }
 pushListen();
 
@@ -1636,7 +1686,8 @@ addEventListener('keydown', e => {
 
 // Read-only peek at a race's state, for testing and for cueing from the browser console.
 window.cheeseBoard = {act: (a, arg) => act[a] && act[a](arg), seats: () => ({ours:tally(), civicapi:CIV_SEATS, listed:{S:NAT.S.size, H:NAT.H.size}}),
-  media: () => ({code:!!PUSH_CODE, connected:MEDIA.connected, paused:MEDIA.paused, waiting:MEDIA.queue.length, showing:MEDIA.now && (MEDIA.now.video ? 'video' : 'photo'), shown:MEDIA.shown, on:mediaOn, label:mediaLabel()}),
+  media: () => ({code:!!PUSH_CODE, connected:MEDIA.connected, paused:MEDIA.paused, waiting:MEDIA.queue.length, showing:MEDIA.now && (MEDIA.now.video ? 'video' : 'photo'), shown:MEDIA.shown, on:mediaOn, label:mediaLabel(),
+    archive:{on:!!ARCHIVE, saved:ARCH.saved, todo:ARCH.todo.length, error:ARCH.error}}),
   source: () => ({src:SRC, forced:forceEH, failCount, ehOk:ehOk && ehOk.toISOString(), ehFails, ehApplied, credit:document.querySelector('.credit').textContent}),
   beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
 
