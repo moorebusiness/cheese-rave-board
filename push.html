@@ -17,12 +17,12 @@ h1{font:900 44px/.95 var(--display);text-transform:uppercase;margin:0 0 6px;lett
 h1 span{color:var(--teal)}
 .sub{color:var(--muted);margin:0 0 20px;font-size:14px}
 button:focus-visible,.pick:focus-within{outline:2px solid var(--pink);outline-offset:2px}
-.pick{position:relative;display:grid;place-items:center;margin:4px 0 0;aspect-ratio:1;border-radius:14px;border:2px dashed var(--line);
+.pick{position:relative;display:grid;place-items:center;margin:4px 0 0;aspect-ratio:341/401;border-radius:14px;border:2px dashed var(--line);
   background:var(--panel);overflow:hidden;cursor:pointer;text-align:center}
 .pick input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .pick .hint{font:900 30px/1 var(--display);text-transform:uppercase;color:var(--teal);padding:16px}
 .pick .hint small{display:block;font:14px system-ui,sans-serif;color:var(--muted);text-transform:none;margin-top:8px}
-.pick img,.pick video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:url(#duoT);pointer-events:none}
+.pick canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .pick.has{border-style:solid;border-color:var(--teal)}
 .info{min-height:1.4em;margin:10px 2px 0;font-size:14px;color:var(--muted)}
 .info.bad{color:var(--err)}
@@ -39,11 +39,6 @@ button.send:disabled{background:#3a4a4d;color:#7d9093;cursor:default}
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <filter id="duoT" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values=".299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 0 0 0 1 0"/>
-    <feComponentTransfer><feFuncR type="linear" slope="1.2" intercept="-.08"/><feFuncG type="linear" slope="1.2" intercept="-.08"/><feFuncB type="linear" slope="1.2" intercept="-.08"/></feComponentTransfer>
-    <feComponentTransfer><feFuncR type="table" tableValues=".016 .153 .918"/><feFuncG type="table" tableValues=".145 .776 1"/><feFuncB type="table" tableValues=".165 .769 .984"/></feComponentTransfer></filter>
-</svg>
 <main>
   <h1>Push to the <span>screen</span></h1>
   <p class="sub">The Election Night Show &amp; Cheese Rave · Tower Theatre</p>
@@ -53,7 +48,7 @@ button.send:disabled{background:#3a4a4d;color:#7d9093;cursor:default}
   <form id="form" hidden>
     <div class="pick" id="pick">
       <input type="file" id="file" accept="image/*,video/*" aria-label="Choose a photo or video">
-      <div class="hint" id="hint">Choose a photo or video<small>It shows on the board square, in the screen's colors</small></div>
+      <div class="hint" id="hint">Choose a photo or video<small>This is how it'll look on the board: cropped to fit, in the screen's colors</small></div>
     </div>
     <div class="info" id="info" role="status"></div>
     <button type="submit" class="send" id="send" disabled>Send to the screen</button>
@@ -66,7 +61,7 @@ button.send:disabled{background:#3a4a4d;color:#7d9093;cursor:default}
 <script>
 (function(){
   const RELAY = 'https://ntfy.sh/';
-  const MAX_BYTES = 15 * 1024 * 1024, MAX_SECS = 30, SIDE = 1080;
+  const MAX_BYTES = 15 * 1024 * 1024, MAX_SECS = 30, LONG = 1600;
   const $ = id => document.getElementById(id);
   const store = { get(k){ try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, set(k, v){ try { localStorage.setItem(k, v); } catch (e) {} } };
   // the push code arrives in the link's # (never sent to any server), then the address bar is cleaned up
@@ -78,17 +73,34 @@ button.send:disabled{background:#3a4a4d;color:#7d9093;cursor:default}
   let ready = null;   // {blob, filename}
   const info = (t, bad) => { $('info').textContent = t; $('info').className = 'info' + (bad ? ' bad' : ''); };
   const mb = n => n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
-  function preview(el){ const p = $('pick'); p.querySelectorAll('img,video').forEach(x => x.remove()); p.appendChild(el); p.classList.add('has'); $('hint').hidden = true; }
+  // The preview is painted the way the board paints it: cropped to the two-tile window and tinted turquoise.
+  let raf = 0;
+  function tint(g, w, h){
+    g.globalCompositeOperation = 'saturation'; g.fillStyle = '#808080'; g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'lighten'; g.fillStyle = '#04252a'; g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'color'; g.fillStyle = '#27C6C4'; g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'source-over';
+  }
+  function preview(src){   // src: a decoded <img> or a playing <video>
+    cancelAnimationFrame(raf);
+    const p = $('pick'); p.querySelectorAll('canvas').forEach(x => x.remove());
+    const c = document.createElement('canvas'), r = p.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
+    c.width = Math.round(r.width * d); c.height = Math.round(r.height * d); p.appendChild(c); p.classList.add('has'); $('hint').hidden = true;
+    const g = c.getContext('2d');
+    const paint = () => { const sw = src.videoWidth || src.naturalWidth, sh = src.videoHeight || src.naturalHeight;
+      if (sw && sh){ const k = Math.max(c.width / sw, c.height / sh);
+        g.drawImage(src, (sw - c.width / k) / 2, (sh - c.height / k) / 2, c.width / k, c.height / k, 0, 0, c.width, c.height); tint(g, c.width, c.height); } };
+    if (src.tagName === 'VIDEO'){ const loop = () => { paint(); raf = requestAnimationFrame(loop); }; loop(); } else paint();
+  }
 
-  async function squareJpeg(file){   // center-crop to a square and shrink to 1080px, so photos send fast
+  async function shrinkJpeg(file){   // the whole photo, shrunk to 1600px on its long side, so it sends fast (the board does the cropping)
     const url = URL.createObjectURL(file);
-    try {
-      const im = new Image(); im.src = url; await im.decode();
-      const s = Math.min(im.naturalWidth, im.naturalHeight), c = document.createElement('canvas');
-      c.width = c.height = Math.min(SIDE, s);
-      c.getContext('2d').drawImage(im, (im.naturalWidth - s) / 2, (im.naturalHeight - s) / 2, s, s, 0, 0, c.width, c.height);
-      return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('encode')), 'image/jpeg', .86));
-    } finally { URL.revokeObjectURL(url); }
+    const im = new Image(); im.src = url; await im.decode();
+    const s = Math.min(1, LONG / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+    c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    const blob = await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('encode')), 'image/jpeg', .86));
+    return {blob, im};
   }
   function clipSeconds(file){
     return new Promise(res => { const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true;
@@ -101,13 +113,14 @@ button.send:disabled{background:#3a4a4d;color:#7d9093;cursor:default}
     try {
       if (/^image\//.test(f.type)) {
         info('Getting your photo ready…');
-        const blob = await squareJpeg(f);
-        const im = new Image(); im.src = URL.createObjectURL(blob); preview(im);
+        const {blob, im} = await shrinkJpeg(f);
+        preview(im);
         ready = {blob, filename:'photo.jpg'}; info('Photo ready · ' + mb(blob.size));
       } else if (/^video\//.test(f.type)) {
         const secs = await clipSeconds(f);
         const v = document.createElement('video'); Object.assign(v, {src:URL.createObjectURL(f), muted:true, loop:true, autoplay:true, playsInline:true});
-        v.setAttribute('playsinline', ''); preview(v); v.play().catch(() => {});
+        v.setAttribute('playsinline', ''); v.play().catch(() => {});
+        v.addEventListener('loadeddata', () => preview(v), {once:true});
         if (f.size > MAX_BYTES) return info(`That clip is ${mb(f.size)}; the limit is 15 MB. Trim it to about 10 seconds (Photos → Edit) and pick it again.`, true);
         if (secs > MAX_SECS) return info(`That clip runs ${Math.round(secs)} seconds; the screen shows up to ${MAX_SECS}. Trim it and pick it again.`, true);
         const ext = (f.name.match(/\.(mp4|mov|m4v|webm)$/i) || [, f.type === 'video/quicktime' ? 'mov' : 'mp4'])[1].toLowerCase();

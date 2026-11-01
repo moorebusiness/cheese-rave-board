@@ -190,15 +190,12 @@ html:fullscreen body{padding-left:0;padding-right:0}   /* full screen: the slide
   background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,246,200,.95));box-shadow:0 0 18px 4px rgba(255,230,150,.55)}
 #ttl .shine{position:absolute;inset:0;pointer-events:none;opacity:0;
   background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);mix-blend-mode:overlay}
-/* phone pushes: four tiles flip away and a panel flips in with the photo or clip, square and tinted to the board's colors */
-.mpanel{position:absolute;z-index:3;border-radius:10px;overflow:hidden;display:grid;place-items:center;
-  background:var(--mbg);color:var(--white);transform-origin:50% 50%;box-shadow:0 30px 90px rgba(0,0,0,.5)}
-.mpanel.t{--mbg:#0C4E56;--macc:#27C6C4} .mpanel.p{--mbg:#6a1f48;--macc:#FF5AA8}
-.mpanel .mbox{position:relative;margin:14px;aspect-ratio:1;overflow:hidden;border-radius:6px;background:#000}
-.mpanel .mbox img,.mpanel .mbox video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-.mpanel.t .mbox img,.mpanel.t .mbox video{filter:url(#duoT)} .mpanel.p .mbox img,.mpanel.p .mbox video{filter:url(#duoP)}
-.mpanel .mbox::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 3px var(--macc);border-radius:6px;
+/* phone pushes: two stacked tiles flip, one at a time, and become a window onto the photo or clip (tinted on a canvas) */
+.mface{position:absolute;z-index:3;border-radius:6px;overflow:hidden;background:#000;transform-origin:50% 50%}
+.mface canvas{display:block;width:100%;height:100%}
+.mface::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:6px;box-shadow:inset 0 0 0 3px var(--macc);
   background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0 2px,transparent 2px 4px)}
+.mface.t{--macc:#27C6C4} .mface.p{--macc:#FF5AA8}
 /* sponsor slides: logos on white cards over a dimmed screen. They sit above both the home screen and the board,
    and keep clear of the bottom of the screen, where the band and DJ stand during the rave. */
 #spon{position:absolute;inset:0;z-index:15;pointer-events:none;opacity:0;transition:opacity .6s ease}
@@ -328,14 +325,6 @@ body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
       <section id="t10" hidden aria-label="Top 10 list"><div class="t10h"><b>TOP 10</b><span id="t10title"></span></div><div id="t10rows"></div></section>
       <div id="ttl" hidden><div class="kick" id="ttlKick"></div><div class="big" id="ttlBig"></div><div class="rule" id="ttlRule"></div><div class="streak" id="ttlStreak"></div><div class="shine" id="ttlShine"></div></div>
     </div>
-    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-      <filter id="duoT" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values=".299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 0 0 0 1 0"/>
-        <feComponentTransfer><feFuncR type="linear" slope="1.2" intercept="-.08"/><feFuncG type="linear" slope="1.2" intercept="-.08"/><feFuncB type="linear" slope="1.2" intercept="-.08"/></feComponentTransfer>
-        <feComponentTransfer><feFuncR type="table" tableValues=".016 .153 .918"/><feFuncG type="table" tableValues=".145 .776 1"/><feFuncB type="table" tableValues=".165 .769 .984"/></feComponentTransfer></filter>
-      <filter id="duoP" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values=".299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 0 0 0 1 0"/>
-        <feComponentTransfer><feFuncR type="linear" slope="1.2" intercept="-.08"/><feFuncG type="linear" slope="1.2" intercept="-.08"/><feFuncB type="linear" slope="1.2" intercept="-.08"/></feComponentTransfer>
-        <feComponentTransfer><feFuncR type="table" tableValues=".165 1 1"/><feFuncG type="table" tableValues=".027 .353 .918"/><feFuncB type="table" tableValues=".086 .659 .957"/></feComponentTransfer></filter>
-    </svg>
     <section id="spon" hidden aria-label="Our sponsors">
       <div id="sponHead"><div id="sponKick"></div><div id="sponTitle"></div><div id="sponRule"></div></div>
       <div id="sponGrid"></div>
@@ -1032,8 +1021,8 @@ async function showBoard(){
 // ----- phone pushes: photos and short clips sent from the "Push to screen" page (push.html) -----
 // The phone uploads to a private topic on ntfy.sh, a free public relay; the board listens to the same topic. The topic
 // code is never in this file: the booth opens the board with ?push=CODE (remembered after that). On the rave board, four
-// unpinned tiles in a 2x2 block flip away and a panel flips in with the photo or clip, cropped square and tinted to the
-// board's turquoise or pink (no names: just the picture). Calls and the Congress board go first; pushes wait their turn, and anything sent during
+// two stacked tiles in the middle columns flip, one at a time, and together become a window onto the photo or clip,
+// cropped to fill it and tinted to the board's turquoise or pink (no names: just the picture). Calls and the Congress board go first; pushes wait their turn, and anything sent during
 // the show waits for the rave board. X skips what's showing, M pauses (and resumes) pushes.
 const PUSH_RELAY = 'https://ntfy.sh/';
 const PUSH_CODE = (() => { const q = new URLSearchParams(location.search).get('push');
@@ -1046,7 +1035,18 @@ const PUSH_KEEP_MIN = 150;   // pushes older than this are stale (the relay dele
 const pushDone = (() => { try { return new Set(JSON.parse(localStorage.getItem('crPushDone') || '[]')); } catch (e) { return new Set(); } })();
 function markDone(id){ pushDone.add(id); try { localStorage.setItem('crPushDone', JSON.stringify([...pushDone].slice(-300))); } catch (e) {} }
 let mediaOn = false;
-const BLOCKS = [[1, 0], [2, 0], [1, 1], [2, 1]];   // [column, row] of a 2x2 block's top left; columns 0 and 4 hold the pinned races
+const PAIRS = [];   // two stacked tiles in the unpinned middle columns (columns 0 and 4 hold the pinned races)
+for (const c of [1, 2, 3]) for (const r of [0, 1]) PAIRS.push([r * 5 + c, (r + 1) * 5 + c]);
+// The tint is painted on a canvas, so photos and clips get exactly the same look (Chrome skips CSS/SVG filters on
+// hardware-decoded video). Gray it, lift the blacks to the dark tone, then give everything the board color.
+const MTONE = {t:{dark:'#04252a', mid:'#27C6C4'}, p:{dark:'#2a0716', mid:'#FF5AA8'}};
+function tintMedia(g, w, h, tone){
+  const c = MTONE[tone];
+  g.globalCompositeOperation = 'saturation'; g.fillStyle = '#808080'; g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'lighten'; g.fillStyle = c.dark; g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'color'; g.fillStyle = c.mid; g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'source-over';
+}
 function pushListen(){
   if (!PUSH_CODE || !window.EventSource) return;
   // first connection: everything from the last PUSH_KEEP_MIN minutes; after a drop: everything since the last message
@@ -1095,59 +1095,64 @@ function loadMedia(item){   // resolves with a ready element, or null if it won'
 }
 async function showMedia(item){
   mediaOn = true; postState();
+  let raf = 0;
   try {
     const el = await loadMedia(item);
     if (!el || scene !== 'rave' || MEDIA.paused){ return; }
-    // a 2x2 block whose tiles are free (wait a moment for a flip in progress)
-    let blk = null;
-    for (let tries = 0; tries < 30 && !blk; tries++){
-      const free = BLOCKS.map(([c, r]) => [r * 5 + c, r * 5 + c + 1, (r + 1) * 5 + c, (r + 1) * 5 + c + 1].map(i => slots[i]))
-        .filter(b => b.every(s => !s.busy));
-      blk = free.length ? free[Math.random() * free.length | 0] : null;
-      if (!blk) await sleep(150);
+    let pair = null;   // a pair of free tiles (wait a moment for a flip in progress)
+    for (let tries = 0; tries < 30 && !pair; tries++){
+      const free = PAIRS.map(ix => ix.map(i => slots[i])).filter(pr => pr.every(s => !s.busy));
+      pair = free.length ? free[Math.random() * free.length | 0] : null;
+      if (!pair) await sleep(150);
     }
-    if (!blk) return;
-    blk.forEach(s => { s.busy = true; clearTimeout(s.timer); });
-    while (blk.some(s => s.el.getAnimations().some(a => !(a instanceof CSSAnimation)))) await sleep(60);
-    const a = stageBox(blk[0].el), z = stageBox(blk[3].el);
+    if (!pair) return;
+    pair.forEach(s => { s.busy = true; clearTimeout(s.timer); });
+    while (pair.some(s => s.el.getAnimations().some(a => !(a instanceof CSSAnimation)))) await sleep(60);
     const tone = MEDIA.tone++ % 2 ? 'p' : 't';
-    const panel = document.createElement('div');
-    panel.className = 'mpanel ' + tone;
-    Object.assign(panel.style, {left:a.x + 'px', top:a.y + 'px', width:(z.x + z.w - a.x) + 'px', height:(z.y + z.h - a.y) + 'px'});
-    panel.innerHTML = '<div class="mbox"></div>';   // just the square photo or clip, centered
-    panel.querySelector('.mbox').style.width = (z.y + z.h - a.y - 28) + 'px';
-    panel.querySelector('.mbox').appendChild(el);
-    // tiles flip away in a cascade, then the panel flips in
-    await Promise.all(blk.map((s, k) => flipOut(s.el, [0, 90, 90, 180][k])));
-    blk.forEach(s => { s.el.style.visibility = 'hidden'; });
-    panel.style.transform = 'perspective(1600px) rotateX(-90deg)';
-    stage.appendChild(panel);
+    // the window spans both tiles and the gap between them; crop the media to fill it (no letterboxing)
+    const boxes = pair.map(s => stageBox(s.el)), top = boxes[0];
+    const W = top.w, H = boxes[1].y + boxes[1].h - top.y;
+    const sw = el.videoWidth || el.naturalWidth, sh = el.videoHeight || el.naturalHeight;
+    const k = Math.max(W / sw, H / sh), ox = (sw - W / k) / 2, oy = (sh - H / k) / 2;
+    const px = Math.min(2, (parseFloat(stage.style.getPropertyValue('--s')) || 1) * (window.devicePixelRatio || 1));
+    const faces = boxes.map(b => {
+      const f = document.createElement('div'); f.className = 'mface ' + tone;
+      Object.assign(f.style, {left:b.x + 'px', top:b.y + 'px', width:b.w + 'px', height:b.h + 'px', visibility:'hidden'});
+      const cv = document.createElement('canvas'); cv.width = Math.round(b.w * px); cv.height = Math.round(b.h * px);
+      f.appendChild(cv); stage.appendChild(f);
+      return {f, g:cv.getContext('2d'), cw:cv.width, ch:cv.height, sx:ox, sy:oy + (b.y - top.y) / k, sW:b.w / k, sH:b.h / k};
+    });
+    const draw = () => faces.forEach(o => { o.g.drawImage(el, o.sx, o.sy, o.sW, o.sH, 0, 0, o.cw, o.ch); tintMedia(o.g, o.cw, o.ch, tone); });
+    const video = el.tagName === 'VIDEO';
+    if (video){ el.currentTime = 0; await el.play().catch(() => {}); const loop = () => { draw(); raf = requestAnimationFrame(loop); }; loop(); }
+    else draw();
+    // top tile flips, then the bottom one, each revealing its part of the picture
     MEDIA.now = item; MEDIA.shown++; postState();
-    if (!RM) await panel.animate([{transform:'perspective(1600px) rotateX(-90deg)'}, {transform:'perspective(1600px) rotateX(8deg)', offset:.72}, {transform:'perspective(1600px) rotateX(0deg)'}],
-      {duration:620, easing:'ease-out'}).finished;
-    panel.style.transform = '';
-    $('flash').style.background = tone === 'p' ? '#FF5AA8' : '#27C6C4';
-    if (!RM) $('flash').animate([{opacity:.22}, {opacity:0}], {duration:900, easing:'ease-out'});
+    for (const [i, s] of pair.entries()){
+      await flipOut(s.el, i ? 40 : 0);
+      s.el.style.visibility = 'hidden';
+      const f = faces[i].f; f.style.visibility = '';
+      if (!RM) await f.animate([{transform:'perspective(1400px) rotateX(-90deg)'}, {transform:'perspective(1400px) rotateX(8deg)', offset:.72}, {transform:'perspective(1400px) rotateX(0deg)'}],
+        {duration:420, easing:'ease-out'}).finished;
+    }
+    $('flash').style.background = MTONE[tone].mid;
+    if (!RM) $('flash').animate([{opacity:.2}, {opacity:0}], {duration:900, easing:'ease-out'});
     // hold: a photo for MEDIA_SECS, a clip until it ends (or CLIP_MAX); X ends it early
     await new Promise(res => {
       MEDIA.skip = res;
-      if (el.tagName === 'VIDEO'){
-        el.currentTime = 0; el.play().catch(() => res());
-        el.addEventListener('ended', res, {once:true}); el.addEventListener('error', res, {once:true});
-        setTimeout(res, CLIP_MAX * 1000);
-      } else setTimeout(res, MEDIA_SECS * 1000);
+      if (video){ el.addEventListener('ended', res, {once:true}); el.addEventListener('error', res, {once:true}); setTimeout(res, CLIP_MAX * 1000); if (el.paused) setTimeout(res, MEDIA_SECS * 1000); }
+      else setTimeout(res, MEDIA_SECS * 1000);
     });
     MEDIA.skip = null; MEDIA.now = null;
-    if (!RM) await panel.animate([{transform:'perspective(1600px) rotateX(0deg)'}, {transform:'perspective(1600px) rotateX(90deg)'}], {duration:300, easing:'ease-in', fill:'forwards'}).finished;
-    if (el.tagName === 'VIDEO'){ el.pause(); el.removeAttribute('src'); el.load(); }
-    panel.remove();
-    for (const [k, s] of blk.entries()){
+    for (const [i, s] of [...pair.entries()].reverse()){   // bottom flips back first, then the top
+      if (!RM) await faces[i].f.animate([{transform:'perspective(1400px) rotateX(0deg)'}, {transform:'perspective(1400px) rotateX(90deg)'}], {duration:230, easing:'ease-in', fill:'forwards'}).finished;
+      faces[i].f.remove();
       s.el.style.transform = 'rotateX(90deg)'; s.el.style.visibility = '';
       setRace(s, s.pin || pickRace() || s.race);
-      flipIn(s.el, [0, 90, 90, 180][k]).then(() => { s.busy = false; schedule(s); });
+      await flipIn(s.el); s.busy = false; schedule(s);
     }
-    await sleep(RM ? 0 : 560);
-  } finally { mediaOn = false; MEDIA.skip = null; MEDIA.now = null; }
+    if (video){ el.pause(); el.removeAttribute('src'); el.load(); }
+  } finally { cancelAnimationFrame(raf); mediaOn = false; MEDIA.skip = null; MEDIA.now = null; }
 }
 function mediaLabel(){
   if (!PUSH_CODE) return 'off (open the board with ?push=CODE)';
