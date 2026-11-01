@@ -1,6 +1,7 @@
 // Cheese Rave push archive
 // Saves every photo and clip sent to the board (push.html) into a Google Drive folder, untinted, named by time.
-// The booth board sends each push here as it arrives. Pushes sent before showtime (testing) go in a "Testing" subfolder.
+// The booth board downloads each push from the relay and sends the file here as it arrives (Google's servers can't
+// reach the relay themselves). Pushes sent before showtime (testing) go in a "Testing" subfolder.
 // Deploy: Deploy > New deployment > Web app, Execute as: Me, Who has access: Anyone. The board opens with
 // ?archive=<deployment ID>.
 
@@ -15,7 +16,6 @@ const EXT = {'image/jpeg':'jpg', 'image/png':'png', 'image/gif':'gif', 'image/we
 // Run this once from the editor (Run > setup) to grant Drive access and create the folder.
 function setup(){
   const f = getFolder(false);
-  UrlFetchApp.fetch('https://ntfy.sh/v1/health', {muteHttpExceptions:true});
   Logger.log('Archive folder: ' + f.getUrl());
 }
 
@@ -34,16 +34,8 @@ function doPost(e){
     const when = new Date(Math.round((+p.time || Date.now() / 1000) * 1000));
     const folder = getFolder(when.getTime() < SHOW_START);
     if (folder.searchFiles('title contains "' + id + '" and trashed = false').hasNext()) return out({ok:true, dup:true});
-    let blob;
-    if (p.data){   // the board sent the file itself (used when Google can't fetch it from the relay)
-      blob = Utilities.newBlob(Utilities.base64Decode(String(p.data)), type);
-    } else {
-      const url = String(p.url || '');
-      if (!/^https:\/\/ntfy\.sh\/file\/[A-Za-z0-9._-]+$/.test(url)) return out({ok:false, error:'bad url'});
-      const r = UrlFetchApp.fetch(url, {muteHttpExceptions:true, followRedirects:true});
-      if (r.getResponseCode() !== 200) return out({ok:false, error:'relay ' + r.getResponseCode(), retry:true});
-      blob = r.getBlob();
-    }
+    if (!p.data) return out({ok:false, error:'no file'});
+    const blob = Utilities.newBlob(Utilities.base64Decode(String(p.data)), type);
     const size = blob.getBytes().length;
     if (!size || size > MAX_BYTES) return out({ok:false, error:'size ' + size});
     const kind = type.indexOf('video/') === 0 ? 'clip' : 'photo';

@@ -1106,17 +1106,19 @@ function mediaLabel(){
 }
 
 // ----- Drive archive: every push this board receives also goes to a small Google Apps Script in Andy's Drive
-// (src/drive-archive.gs), which saves the original, untinted file to a "Cheese Rave pushes" folder. Open the board
+// (src/drive-archive.gs), which saves the original, untinted file to a "Cheese Rave pushes" folder. The board downloads
+// each file from the relay and sends it along, since Google's servers can't reach the relay. Open the board
 // once with ?archive=<deployment ID> (remembered after that; ?archive=off forgets it). Without it, nothing is saved.
 const ARCHIVE = (() => { const q = new URLSearchParams(location.search).get('archive'); let v = '';
   try { if (q === 'off') localStorage.removeItem('crArchive'); else if (q) localStorage.setItem('crArchive', q); v = q === 'off' ? '' : q || localStorage.getItem('crArchive') || ''; }
   catch (e) { v = q === 'off' ? '' : q || ''; }
   return /^[A-Za-z0-9_-]{20,120}$/.test(v) ? 'https://script.google.com/macros/s/' + v + '/exec' : ''; })();
-const ARCH = {todo:[], busy:false, saved:0, error:'',
+const ARCH = {todo:[], busy:false, saved:0, missed:0, error:'',
   done:(() => { try { return new Set(JSON.parse(localStorage.getItem('crArchived') || '[]')); } catch (e) { return new Set(); } })()};
 function archLabel(){
   if (!ARCHIVE) return '';
-  return ' · Drive: ' + (ARCH.error ? 'NOT SAVING (' + ARCH.error + ')' : ARCH.saved ? ARCH.saved + ' saved' : 'ready') + (ARCH.todo.length ? ', ' + ARCH.todo.length + ' to save' : '');
+  return ' · Drive: ' + (ARCH.error ? 'NOT SAVING (' + ARCH.error + ')' : ARCH.saved ? ARCH.saved + ' saved' : 'ready')
+    + (ARCH.missed ? ', ' + ARCH.missed + ' missed' : '') + (ARCH.todo.length ? ', ' + ARCH.todo.length + ' to save' : '');
 }
 function archiveAdd(m){
   if (!ARCHIVE || ARCH.done.has(m.id) || ARCH.todo.some(x => x.id === m.id)) return;
@@ -1131,21 +1133,21 @@ const b64 = blob => new Promise((res, rej) => { const fr = new FileReader(); fr.
 async function archiveRun(){
   if (ARCH.busy || !ARCH.todo.length) return;
   ARCH.busy = true;
-  const x = ARCH.todo[0], base = {key:PUSH_CODE, id:x.id, type:x.type, time:x.time};
+  const x = ARCH.todo[0];
   let r = null;
-  try {
-    r = await archivePost(Object.assign({url:x.url}, base));
-    if (r && !r.ok && /^relay/.test(r.error || '')){   // Google couldn't get the file from the relay: send it from here
-      const blob = await fetch(x.url).then(res => res.ok ? res.blob() : null).catch(() => null);
-      if (blob) r = await archivePost(Object.assign({data:await b64(blob)}, base));
-    }
+  try {   // Google's servers can't reach the relay, so the board downloads the file and sends it along
+    const res = await fetch(x.url);
+    if (res.status === 404 || res.status === 410) r = {ok:false, error:'file expired at the relay'};
+    else if (!res.ok) r = {ok:false, error:'relay ' + res.status, retry:true};
+    else r = await archivePost({key:PUSH_CODE, id:x.id, type:x.type, time:x.time, data:await b64(await res.blob())});
   } catch (e) { r = null; }
   const expired = Date.now() > x.time * 1000 + 175 * 60000;   // the relay deletes files after 3 hours
   if (r && r.ok){
     ARCH.todo.shift(); ARCH.done.add(x.id); if (r.saved) ARCH.saved++; ARCH.error = '';
     try { localStorage.setItem('crArchived', JSON.stringify([...ARCH.done].slice(-500))); } catch (e) {}
   } else if ((r && !r.retry) || expired){
-    ARCH.todo.shift(); ARCH.error = r && r.error ? String(r.error).slice(0, 40) : 'gave up on one';
+    ARCH.todo.shift();   // a wrong code stops everything; anything else is one file missed
+    if (r && r.error === 'wrong key') ARCH.error = 'wrong code'; else ARCH.missed++;
   } else {
     x.tries++; ARCH.error = x.tries >= 3 ? (r && r.error ? String(r.error).slice(0, 40) : 'can’t reach Google') : '';
   }
@@ -1687,7 +1689,7 @@ addEventListener('keydown', e => {
 // Read-only peek at a race's state, for testing and for cueing from the browser console.
 window.cheeseBoard = {act: (a, arg) => act[a] && act[a](arg), seats: () => ({ours:tally(), civicapi:CIV_SEATS, listed:{S:NAT.S.size, H:NAT.H.size}}),
   media: () => ({code:!!PUSH_CODE, connected:MEDIA.connected, paused:MEDIA.paused, waiting:MEDIA.queue.length, showing:MEDIA.now && (MEDIA.now.video ? 'video' : 'photo'), shown:MEDIA.shown, on:mediaOn, label:mediaLabel(),
-    archive:{on:!!ARCHIVE, saved:ARCH.saved, todo:ARCH.todo.length, error:ARCH.error}}),
+    archive:{on:!!ARCHIVE, saved:ARCH.saved, missed:ARCH.missed, todo:ARCH.todo.length, error:ARCH.error}}),
   source: () => ({src:SRC, forced:forceEH, failCount, ehOk:ehOk && ehOk.toISOString(), ehFails, ehApplied, credit:document.querySelector('.credit').textContent}),
   beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
 
