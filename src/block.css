@@ -1,0 +1,58 @@
+/* Block style: the original heavy split-flap look. Solid flaps, condensed black type, big numerals.
+   Same color code: Oklahoma turquoise, national pink, called races gold. */
+:root{--display:"Big Shoulders Display","Big Shoulders","Arial Narrow",Impact,sans-serif;
+  --okDeep:#0C4E56; --okBright:#27C6C4; --okPale:#C3F3EC; --natHot:#FF5AA8; --natPlum:#6a1f48; --natPale:#ffd2e7; --boardPanel:#072a2f}
+.clab{font:600 17px var(--mono);letter-spacing:.16em}
+.clab.sm{font-size:14px;letter-spacing:.12em}
+.n{font-weight:900;font-size:92px;line-height:.9;min-width:2.3ch}
+.bar{height:24px;border-radius:3px;background:#0d3439}
+.bar .d{border-radius:3px 0 0 3px} .bar .r{border-radius:0 3px 3px 0}
+.bar .maj{top:-9px;bottom:-9px;width:3px;margin-left:-1.5px}
+#clock{font-weight:800;font-size:64px;letter-spacing:.02em}
+.tag{font:600 13px var(--mono);letter-spacing:.1em;padding:6px 12px;border-radius:3px}
+.tag.sample,.tag.err{background:var(--pink);color:var(--ink);box-shadow:none}
+.tag.live{background:var(--teal);color:var(--ink);box-shadow:none} .tag.live::before{background:var(--ink)}
+.credit{font:600 11px var(--mono);letter-spacing:.18em;color:var(--pale)}
+#grid{gap:22px}
+.tile{border-radius:10px;box-shadow:none}
+.v-ok-a{--tb:var(--okDeep);--tf:var(--white);--hinge:rgba(0,0,0,.35)}
+.v-ok-b{--tb:var(--okBright);--tf:var(--ink);--hinge:rgba(3,24,27,.2)}
+.v-ok-c{--tb:var(--okPale);--tf:var(--ink);--hinge:rgba(3,24,27,.16)}
+.v-n-a{--tb:var(--natHot);--tf:var(--ink);--hinge:rgba(3,24,27,.2)}
+.v-n-b{--tb:var(--natPlum);--tf:var(--white);--hinge:rgba(0,0,0,.35)}
+.v-n-c{--tb:var(--natPale);--tf:var(--ink);--hinge:rgba(3,24,27,.16)}
+.tile.pinned{box-shadow:none}
+.tile.called{box-shadow:inset 0 0 0 5px var(--gold),0 0 34px rgba(255,214,46,.45)}
+.tile::before{background:radial-gradient(120% 90% at 15% 0%,rgba(255,255,255,.22),transparent 62%);opacity:.15}
+.tile::after{height:2px;margin-top:-1px;background:var(--hinge)}
+.face{padding:14px 20px}
+.lbl{font:900 30px var(--display);letter-spacing:.02em;color:var(--tf)}
+.ctag,.ftag{font:600 12px var(--mono);letter-spacing:.14em;padding:5px 8px;border-radius:3px;background:var(--ink)}
+.ctag{color:var(--gold)} .ftag{color:var(--pale);opacity:1}
+.cand{grid-template-columns:32px minmax(0,1fr) auto;gap:12px}
+.cand.trail{opacity:.55} .called .cand.trail{opacity:.45}
+.pt{width:32px;height:32px;display:grid;place-items:center;font:600 14px var(--mono);color:#fff}
+.pt::after{content:attr(data-l)}
+.pt.I,.pt.L{background:var(--tf);color:var(--tb)} .pt.Q{box-shadow:inset 0 0 0 2px currentColor;color:inherit}
+.nm{font-weight:800;font-size:34px}
+.pc{font:900 46px var(--display);line-height:1;min-width:3.4ch}
+.cand.lead .pc,.called .cand.lead .pc{color:inherit}
+.sbar{height:8px;border-radius:4px;background:color-mix(in srgb,currentColor 22%,transparent);overflow:hidden}
+.sbar i,.called .sbar i{background:currentColor}
+.in{font:600 15px var(--mono);letter-spacing:.06em;color:inherit}
+#board{gap:22px}
+.brow{border-radius:10px;background:var(--boardPanel);box-shadow:none;padding:22px 40px 20px}
+.bh b{font:900 60px var(--display);letter-spacing:.02em;color:var(--pale)}
+.bh span{font:600 17px var(--mono);letter-spacing:.14em;color:var(--teal)}
+.bmain b{font-weight:900;font-size:132px;line-height:.82}
+#bHD,#bHR{font-size:104px}   /* three digits have to fit inside the arc */
+.bd{font:600 18px var(--mono);letter-spacing:.1em}
+.call{left:360px;top:224px;width:1200px;height:560px;border-radius:16px;box-shadow:0 40px 120px rgba(0,0,0,.55);border-top:0}
+.call .ci{gap:10px;width:1100px}
+.ck{font:600 22px var(--mono);letter-spacing:.24em}
+.cr{font-weight:900;font-size:80px;letter-spacing:0}
+.cw{font-weight:900;font-size:200px;line-height:.86;max-width:1100px}
+.cm{font:800 54px var(--display);letter-spacing:.02em}
+#band{left:0;right:0;border-top:3px solid var(--okDeep)}
+.mt{top:34px;font:900 112px var(--display);letter-spacing:.04em;color:transparent;opacity:1;
+  -webkit-text-stroke:2px color-mix(in srgb,var(--teal) 38%,var(--night));animation-duration:90s}

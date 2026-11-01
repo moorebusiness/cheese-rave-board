@@ -1,0 +1,77 @@
+{
+ "gazette": {
+  "alt": "Oklahoma Gazette and UBS",
+  "w": 900,
+  "h": 354
+ },
+ "infocus": {
+  "alt": "InFocus Campaigns",
+  "w": 900,
+  "h": 349
+ },
+ "cfo": {
+  "alt": "Communities Foundation of Oklahoma",
+  "w": 640,
+  "h": 233
+ },
+ "kpg": {
+  "alt": "Kirkpatrick Policy Group",
+  "w": 640,
+  "h": 149
+ },
+ "mitchelltalks": {
+  "alt": "MitchellTalks",
+  "w": 640,
+  "h": 241
+ },
+ "vox": {
+  "alt": "Vox Audio Visual",
+  "w": 279,
+  "h": 420
+ },
+ "sawyer": {
+  "alt": "Greg and Marti Sawyer",
+  "w": 640,
+  "h": 155
+ },
+ "focus": {
+  "alt": "Focus Workplace Furniture + Design",
+  "w": 640,
+  "h": 185
+ },
+ "konjo": {
+  "alt": "Konjo Concepts",
+  "w": 640,
+  "h": 161
+ },
+ "boomtown": {
+  "alt": "Boomtown Creamery",
+  "w": 318,
+  "h": 420
+ },
+ "fuzzys": {
+  "alt": "Fuzzy\u2019s Taco Shop",
+  "w": 640,
+  "h": 367
+ },
+ "tacoempire": {
+  "alt": "Taco Empire",
+  "w": 434,
+  "h": 420
+ },
+ "eastside": {
+  "alt": "Eastside Pizza House",
+  "w": 561,
+  "h": 420
+ },
+ "stonehorse": {
+  "alt": "Stonehorse Caf\u00e9 & Market",
+  "w": 421,
+  "h": 420
+ },
+ "empireslice": {
+  "alt": "Empire Slice House",
+  "w": 640,
+  "h": 174
+ }
+}

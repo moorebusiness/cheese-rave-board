@@ -1,0 +1,1368 @@
+<title>Cheese Rave Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Antonio:wght@200;300;400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;400;500&display=swap">
+<style>
+/* Layout: one fixed 1920x1080 stage scaled to fit the screen. Lasers fan up from the DJ booth behind everything;
+   slim seat count on top, 5x3 grid of glassy split-flap tiles (four pinned headline races on the outer edges),
+   neon grid floor + marquee at the bottom where the band and DJ block the view.
+   Color code: Oklahoma races turquoise, national races pink, called races gold. */
+:root{
+  --night:#040f11;
+  --flapA:rgba(10,42,47,.86);   /* dark turquoise flap */
+  --flapB:rgba(6,24,27,.9);     /* near-black flap */
+  --teal:#3ad6d2;
+  --pale:#c6f3ed;
+  --pink:#ff6fb5;
+  --gold:#ffd62e;               /* Cheese Rave type gold */
+  --cheese:#fee700;             /* Cheese Rave wedge */
+  --amber:#f1aa16;              /* wedge holes */
+  --white:#effffc;
+  --ink:#03181b;
+  --muted:#5f8f92;
+  --dem:#5f90ff; --demFill:#2f63e6;
+  --rep:#ff5c5c; --repFill:#e03a41;
+  --display:"Antonio","Arial Narrow","Helvetica Neue",sans-serif;
+  --mono:"Martian Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--night);color:var(--white);overflow:hidden;box-sizing:border-box;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
+#fit{position:relative;width:100%;height:100%;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform:translate(-50%,-50%) scale(var(--s,.4));
+  background:var(--night);overflow:hidden;font-family:var(--display)}
+#bg{position:absolute;inset:0;width:1920px;height:1080px}
+
+/* ---------- top strip: seats ---------- */
+#top{position:absolute;left:64px;top:22px;width:1792px;height:160px;display:grid;grid-template-columns:1fr 380px 1fr;gap:40px;align-items:end}
+.chamber{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:14px}
+.cside{display:grid;gap:12px;justify-items:start;padding-bottom:2px}
+.cside.r{justify-items:end}
+.clab{font:400 13px var(--mono);letter-spacing:.24em;color:var(--pale);white-space:nowrap}
+.clab.sm{font-size:12px;color:var(--muted);letter-spacing:.2em}
+/* seat charts: a dot per seat, Democrats fill in from the left, Republicans from the right, undecided in the middle */
+.seats{display:block;overflow:visible}
+.seats circle{transform-box:fill-box;transform-origin:center;transition:fill .6s ease}
+.seats .o{fill:#2c4c52} .seats .d{fill:var(--dem)} .seats .r{fill:var(--rep)} .seats .i{fill:var(--teal)}
+.seats .maj{stroke:var(--gold);stroke-linecap:round;fill:none}
+.n{font-weight:300;font-size:58px;line-height:1;font-variant-numeric:tabular-nums;min-width:2.1ch;text-align:center;letter-spacing:.01em}
+.nd{color:var(--dem)} .nr{color:var(--rep)}
+.bar{position:relative;height:4px;display:flex;background:#123135;border-radius:2px}
+.bar i{display:block;height:100%;transition:width 1s ease}
+.bar .d{background:var(--dem)} .bar .r{background:var(--rep)} .bar .ind{background:var(--teal)} .bar .gap{flex:1}
+.bar .maj{position:absolute;top:-8px;bottom:-8px;width:2px;margin-left:-1px;background:var(--gold)}
+.mid{display:grid;justify-items:center;gap:8px;align-self:center}
+#clock{font-weight:300;font-size:46px;line-height:1;color:var(--pale);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.tags{display:flex;gap:8px}
+.tag{font:400 11px var(--mono);letter-spacing:.16em;padding:5px 9px;border-radius:2px;white-space:nowrap;background:rgba(4,15,17,.7)}
+.tag.sample,.tag.err{color:var(--pink);box-shadow:inset 0 0 0 1px var(--pink)}
+.tag.live{color:var(--teal);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--teal) 60%,transparent)}
+.tag.live::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--teal);margin-right:8px;vertical-align:1px;animation:blink 2s ease-in-out infinite}
+.tag.wait{color:var(--pale);box-shadow:inset 0 0 0 1px #1d4146}
+.tag.demo{color:var(--muted);box-shadow:inset 0 0 0 1px #1d4146}
+@keyframes blink{50%{opacity:.25}}
+.credit{font:400 10px var(--mono);letter-spacing:.22em;color:var(--muted);white-space:nowrap}
+html:fullscreen body{padding-left:0;padding-right:0}   /* full screen: the slide runs edge to edge */
+
+/* ---------- race grid ---------- */
+#grid{position:absolute;left:64px;top:196px;width:1792px;height:612px;display:grid;grid-template-columns:repeat(5,1fr);
+  grid-template-rows:repeat(3,1fr);gap:24px;perspective:1800px}
+.tile{position:relative;border-radius:6px;overflow:hidden;background:var(--tb);color:var(--tf);backface-visibility:hidden;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 22%,transparent);transition:box-shadow .6s}
+.v-ok-a{--tb:var(--flapA);--tf:var(--pale);--acc:var(--teal)}
+.v-ok-b{--tb:var(--flapB);--tf:var(--white);--acc:var(--teal)}
+.v-n-a{--tb:var(--flapA);--tf:var(--pale);--acc:var(--pink)}
+.v-n-b{--tb:var(--flapB);--tf:var(--white);--acc:var(--pink)}
+.v-ok-c{--tb:var(--flapA);--tf:var(--pale);--acc:var(--teal)}
+.v-n-c{--tb:var(--flapB);--tf:var(--white);--acc:var(--pink)}
+.tile.pinned{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 50%,transparent)}
+.tile.called{box-shadow:inset 0 0 0 2px var(--gold),0 0 26px rgba(255,214,46,.22)}
+.tile::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(90% 70% at 0% 0%,color-mix(in srgb,var(--acc) 16%,transparent),transparent 70%);opacity:.25;
+  animation:breathe var(--bd,9s) ease-in-out var(--bdl,0s) infinite alternate}
+.tile::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.45);pointer-events:none}
+@keyframes breathe{to{opacity:1}}
+.face{position:relative;height:100%;box-sizing:border-box;padding:20px 24px 18px;display:grid;grid-template-rows:auto 1fr 1fr auto;align-items:center}
+.top{display:flex;align-items:center;gap:12px;min-width:0}
+.lbl{flex:1;min-width:0;font:400 15px var(--mono);letter-spacing:.14em;color:var(--acc);white-space:nowrap;overflow:hidden}
+.ctag,.ftag{display:none;align-items:center;gap:7px;font:500 11px var(--mono);letter-spacing:.18em;white-space:nowrap}
+.ctag{color:var(--gold)}
+.ctag::before{content:"";width:14px;height:11px;background:radial-gradient(circle at 62% 66%,var(--amber) 0 1.8px,transparent 2.3px),var(--cheese);
+  clip-path:polygon(0 100%,100% 100%,100% 16%)}
+.ftag{color:var(--pale);opacity:.7}
+.called .ctag{display:inline-flex}
+.final:not(.called) .ftag{display:inline-flex}
+.cand{display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:center;gap:14px;transition:opacity .5s}
+.cand.trail{opacity:.42}
+.pt{width:8px;height:8px;border-radius:50%}
+.pt.D{background:var(--dem)} .pt.R{background:var(--rep)} .pt.I,.pt.L{background:var(--tf)} .pt.Q{box-shadow:inset 0 0 0 1.5px currentColor}
+.nm{font-weight:400;font-size:34px;line-height:1.1;letter-spacing:.02em;white-space:nowrap;overflow:hidden;min-width:0}
+.pc{font:300 28px var(--mono);font-variant-numeric:tabular-nums;text-align:right;min-width:4ch}
+.cand.lead .pc{color:var(--acc)}
+.called .cand.lead .pc{color:var(--gold)}
+.called .cand.trail{opacity:.3}
+.ft{display:flex;align-items:center;gap:14px}
+.sbar{flex:1;height:2px;background:color-mix(in srgb,var(--tf) 14%,transparent);display:flex}
+.sbar i{display:block;height:100%;background:var(--acc);transition:width .8s ease}
+.called .sbar i{background:var(--gold)}
+.in{font:400 11px var(--mono);letter-spacing:.14em;color:var(--muted);white-space:nowrap}
+#stage.beat .tile{animation:beat .4839s ease-out infinite}
+@keyframes beat{0%{filter:brightness(1.3)}100%{filter:brightness(1)}}
+
+/* ---------- Congress takeover ---------- */
+#board{position:absolute;left:64px;top:196px;width:1792px;height:612px;display:grid;grid-template-columns:1fr 1fr;gap:24px;perspective:1800px}
+.brow{position:relative;background:var(--flapB);border-radius:6px;box-shadow:inset 0 0 0 1px #12363b;
+  display:grid;grid-template-rows:auto 1fr auto;justify-items:center;gap:10px;padding:24px 40px 22px;overflow:hidden}
+.bh{display:grid;justify-items:center;gap:6px;font:400 15px var(--mono);letter-spacing:.22em;text-align:center}
+.bh b{font-weight:400;color:var(--pale)} .bh span{color:var(--muted)}
+.bmain{position:relative;align-self:end}
+.bmain b{position:absolute;bottom:-4px;font-weight:200;font-size:96px;line-height:.9;font-variant-numeric:tabular-nums}
+.bmain .nd{right:50%;margin-right:20px;text-align:right} .bmain .nr{left:50%;margin-left:20px;text-align:left}
+.bd{font:400 14px var(--mono);letter-spacing:.18em;color:var(--pale);text-align:center}
+
+/* ---------- race call ---------- */
+.call{position:absolute;left:480px;top:282px;width:960px;height:440px;border-radius:8px;transform-origin:0 0;
+  background:var(--cc);color:#fff;display:grid;align-content:center;justify-items:center;text-align:center;z-index:5;
+  box-shadow:0 0 140px color-mix(in srgb,var(--cc) 50%,transparent);border-top:3px solid var(--gold)}
+.call.D{--cc:var(--demFill)} .call.R{--cc:var(--repFill)}
+.call.I,.call.L{--cc:var(--teal);color:var(--ink)} .call.Y{--cc:var(--white);color:var(--ink)} .call.N{--cc:var(--pink);color:var(--ink)}
+.call .ci{display:grid;justify-items:center;gap:14px;width:860px;opacity:0}
+.ck{font:400 14px var(--mono);letter-spacing:.34em;color:var(--gold)}
+.call.Y .ck,.call.N .ck,.call.I .ck,.call.L .ck{color:inherit;opacity:.8}
+.cr{font-weight:300;font-size:52px;line-height:1;letter-spacing:.03em;white-space:nowrap}
+.cw{font-weight:400;font-size:124px;line-height:.95;letter-spacing:.01em;white-space:nowrap;overflow:hidden;max-width:860px}
+.cm{font:300 22px var(--mono);letter-spacing:.14em}
+#flash{position:absolute;inset:0;pointer-events:none;opacity:0;z-index:4}
+
+/* ---------- bottom band (expect it to be blocked) ---------- */
+#band{position:absolute;left:64px;right:64px;top:848px;height:232px;overflow:hidden}
+.mt{position:absolute;top:26px;white-space:nowrap;font:400 14px var(--mono);letter-spacing:.42em;color:var(--pale);opacity:.45;
+  animation:marq 120s linear infinite}
+@keyframes marq{to{transform:translateX(-50%)}}
+
+/* ---------- operator controls (hidden at rest) ---------- */
+#ctl{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:max(16px,calc(env(safe-area-inset-right,0px) + 10px));
+  left:max(16px,calc(env(safe-area-inset-left,0px) + 10px));display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;
+  opacity:0;transition:opacity .3s;pointer-events:none;z-index:20}
+#ctl.on{opacity:1;pointer-events:auto}
+#ctl button{font:500 12px var(--mono);letter-spacing:.04em;color:var(--white);background:rgba(4,15,17,.9);
+  border:1px solid #1f5156;border-radius:4px;padding:8px 10px;cursor:pointer}
+#ctl button[aria-pressed="true"]{border-color:var(--teal);color:var(--teal)}
+#ctl button:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+#ctl kbd{font:inherit;opacity:.55;margin-left:4px}
+/* ---------- the show's home screen: sky, airplanes/ISS, skyline, moon, then Top 10 and title slides on top ---------- */
+#sky{position:absolute;inset:0;z-index:9;opacity:0;pointer-events:none;transition:opacity 1.6s ease;overflow:hidden}
+#stage.show-mode #sky{opacity:1}
+#sky .ly{position:absolute;display:block}
+#lySky{left:0;top:0;width:1920px;height:1080px}
+#skyfx{position:absolute;left:0;top:0;width:1920px;height:1080px}
+#lyCity{left:0;top:379px;width:1920px;height:701px}
+#lyMoon{left:218px;top:99px;width:378px;height:377px;animation:moonbob 14s ease-in-out infinite alternate}
+@keyframes moonbob{from{transform:translateY(-5px)}to{transform:translateY(5px)}}
+/* Top 10: a dark glass panel right of the moon, clear of the bottom of the screen; #10 lands at the bottom, later numbers stack above */
+#t10{position:absolute;left:660px;top:118px;width:1200px;height:618px;box-sizing:border-box;padding:28px 44px 30px;border-radius:18px;
+  background:rgba(3,8,20,.66);backdrop-filter:blur(8px);box-shadow:0 30px 90px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,214,46,.22);
+  display:grid;grid-template-rows:auto 1fr;gap:16px;opacity:0;transform:translateY(18px) scale(.985);transition:opacity .6s ease,transform .6s ease}
+#t10.on{opacity:1;transform:none}
+.t10h{display:flex;align-items:baseline;gap:20px;border-bottom:2px solid rgba(255,214,46,.35);padding-bottom:12px;min-width:0}
+.t10h b{font:900 62px/1 var(--display);color:var(--gold);letter-spacing:.01em;white-space:nowrap}
+.t10h span{font:600 19px var(--mono);letter-spacing:.16em;color:var(--pale);white-space:nowrap;overflow:hidden;min-width:0}
+#t10rows{display:flex;flex-direction:column-reverse;justify-content:flex-start;gap:10px;min-height:0;overflow:hidden}
+.t10r{display:grid;grid-template-columns:100px minmax(0,1fr);align-items:center;gap:22px;min-height:78px}
+.t10r .no{font:900 78px/.9 var(--display);color:var(--gold);text-align:right;text-shadow:0 0 24px rgba(255,214,46,.35)}
+.t10r .tx{font:800 40px/1.08 var(--display);color:var(--white);letter-spacing:.01em;overflow:hidden;max-height:2.2em}
+/* title slides: a big entrance, then the title settles into a small tag in the top right while the segment runs */
+#ttl{position:absolute;left:640px;top:104px;width:1220px;box-sizing:border-box;padding:26px 30px;text-align:center;border-radius:16px;
+  transform-origin:100% 0;transition:transform 1.1s cubic-bezier(.6,0,.2,1),background-color 1.1s ease,box-shadow 1.1s ease}
+#ttl::before{content:"";position:absolute;inset:-120px -60px;z-index:-1;pointer-events:none;transition:opacity 1s;
+  background:radial-gradient(closest-side,rgba(2,6,16,.72),rgba(2,6,16,0))}
+#ttl.tag{transform:translate(0,-44px) scale(.42);background-color:rgba(3,8,20,.72);box-shadow:inset 0 0 0 2px rgba(255,214,46,.35)}
+#ttl.tag::before{opacity:0}
+#ttl .kick{font:600 22px var(--mono);letter-spacing:.32em;color:var(--gold);margin-bottom:10px}
+#ttl .big{font:900 150px/1 var(--display);color:var(--white);letter-spacing:.01em;text-transform:uppercase;white-space:nowrap;
+  text-shadow:0 6px 40px rgba(0,0,0,.6);position:relative}
+#ttl .big span{display:inline-block;transform-origin:50% 80%}
+#ttl .rule{height:5px;margin:18px auto 0;width:62%;background:linear-gradient(90deg,transparent,var(--gold) 18%,var(--gold) 82%,transparent);transform-origin:0 50%}
+#ttl .streak{position:absolute;left:0;top:50%;width:260px;height:4px;margin-top:-2px;border-radius:2px;opacity:0;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,246,200,.95));box-shadow:0 0 18px 4px rgba(255,230,150,.55)}
+#ttl .shine{position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);mix-blend-mode:overlay}
+/* sponsor slides: logos on white cards over a dimmed screen. They sit above both the home screen and the board,
+   and keep clear of the bottom of the screen, where the band and DJ stand during the rave. */
+#spon{position:absolute;inset:0;z-index:15;pointer-events:none;opacity:0;transition:opacity .6s ease}
+#spon.on{opacity:1}
+#spon::before{content:"";position:absolute;inset:0;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+  background:radial-gradient(ellipse 85% 75% at 50% 42%,rgba(5,12,28,.78),rgba(2,5,14,.94))}
+#sponHead{position:absolute;left:0;right:0;top:64px;text-align:center}
+#sponKick{font:600 22px var(--mono);letter-spacing:.32em;color:var(--gold)}
+#sponTitle{width:1700px;margin:14px auto 0;font:900 88px/1 var(--display);color:var(--white);text-transform:uppercase;letter-spacing:.01em;white-space:nowrap;
+  text-shadow:0 6px 40px rgba(0,0,0,.6)}
+#sponTitle span{display:inline-block;transform-origin:50% 80%}
+#sponRule{height:5px;width:960px;margin:22px auto 0;background:linear-gradient(90deg,transparent,var(--gold) 18%,var(--gold) 82%,transparent)}
+#sponGrid{position:absolute;left:110px;width:1700px;top:300px;height:560px;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;
+  gap:var(--g);perspective:1400px}
+.scard{position:relative;width:var(--cw);height:var(--ch);background:#fff;border-radius:16px;display:grid;place-items:center;overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.scard::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background:var(--gold)}
+.scard img{display:block}
+.scard .gl{position:absolute;inset:0;pointer-events:none;transform:translateX(-120%);
+  background:linear-gradient(105deg,transparent 40%,rgba(255,226,120,.28) 50%,transparent 60%)}
+body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
+@media (prefers-reduced-motion:reduce){.tile::before,.mt,.tag.live::before,#lyMoon{animation:none}}
+/*__STYLE__*/
+</style>
+
+<div id="fit">
+  <div id="stage">
+    <canvas id="bg" width="1920" height="1080" aria-hidden="true"></canvas>
+    <header id="top">
+      <div class="chamber" aria-label="Senate seats">
+        <div class="cside"><span class="clab">U.S. SENATE</span><b class="n nd" id="sD">43</b></div>
+        <svg class="seats" id="sSeats" aria-hidden="true"></svg>
+        <div class="cside r"><span class="clab sm">CHAMBER CONTROL</span><b class="n nr" id="sR">42</b></div>
+      </div>
+      <div class="mid">
+        <div id="clock">9:00</div>
+        <div class="tags"><span class="tag wait" id="status">CONNECTING TO RESULTS</span><span class="tag demo" id="demoChip" hidden>DEMO SPEED</span><span class="tag err" id="testChip" hidden>TEST DATA</span></div>
+        <div class="credit">RESULTS: CIVICAPI.ORG</div>
+      </div>
+      <div class="chamber" aria-label="House seats">
+        <div class="cside"><span class="clab">U.S. HOUSE</span><b class="n nd" id="hD">184</b></div>
+        <svg class="seats" id="hSeats" aria-hidden="true"></svg>
+        <div class="cside r"><span class="clab sm">CHAMBER CONTROL</span><b class="n nr" id="hR">165</b></div>
+      </div>
+    </header>
+
+    <main id="grid" aria-label="Race results"></main>
+
+    <section id="board" hidden aria-label="Balance of power">
+      <div class="brow">
+        <div class="bh"><b>U.S. SENATE</b><span>DEMOCRATS NEED 51 · REPUBLICANS NEED 50 + VP</span></div>
+        <div class="bmain"><svg class="seats" id="bSSeats" aria-hidden="true"></svg><b class="nd" id="bSD">43</b><b class="nr" id="bSR">42</b></div>
+        <div class="bd" id="bSDet"></div>
+      </div>
+      <div class="brow">
+        <div class="bh"><b>U.S. HOUSE</b><span>218 SEATS FOR A MAJORITY</span></div>
+        <div class="bmain"><svg class="seats" id="bHSeats" aria-hidden="true"></svg><b class="nd" id="bHD">184</b><b class="nr" id="bHR">165</b></div>
+        <div class="bd" id="bHDet"></div>
+      </div>
+    </section>
+
+    <div id="flash"></div>
+    <div id="band" aria-hidden="true"><div class="mt" id="marq"></div></div>
+    <div id="sky" aria-label="Home screen">
+      <img class="ly" id="lySky" alt="" src="/*__SKYBG__*/">
+      <canvas id="skyfx" width="1920" height="1080" aria-hidden="true"></canvas>
+      <img class="ly" id="lyCity" alt="" src="/*__SKYLINE__*/">
+      <img class="ly" id="lyMoon" alt="The Election Night Show at Tower Theatre" src="/*__MOON__*/">
+      <section id="t10" hidden aria-label="Top 10 list"><div class="t10h"><b>TOP 10</b><span id="t10title"></span></div><div id="t10rows"></div></section>
+      <div id="ttl" hidden><div class="kick" id="ttlKick"></div><div class="big" id="ttlBig"></div><div class="rule" id="ttlRule"></div><div class="streak" id="ttlStreak"></div><div class="shine" id="ttlShine"></div></div>
+    </div>
+    <section id="spon" hidden aria-label="Our sponsors">
+      <div id="sponHead"><div id="sponKick"></div><div id="sponTitle"></div><div id="sponRule"></div></div>
+      <div id="sponGrid"></div>
+    </section>
+  </div>
+</div>
+
+<div id="ctl" role="toolbar" aria-label="Operator controls">
+  <button id="bFlip" class="rv" data-a="flip">Flip a tile<kbd>F</kbd></button>
+  <button id="bCall" class="rv" data-a="call">Call a race<kbd>K</kbd></button>
+  <button id="bBoard" class="rv" data-a="board">Congress board<kbd>C</kbd></button>
+  <button id="bDemo" data-a="demo" aria-pressed="false">Demo speed<kbd>D</kbd></button>
+  <button id="bBeat" class="rv" data-a="beat" aria-pressed="false">Beat sync<kbd>B</kbd></button>
+  <button id="bShow" data-a="show">Home screen<kbd>H</kbd></button>
+  <span id="cueBtns" style="display:contents"></span>
+  <button id="bSLoop" data-a="sponloop" aria-pressed="false">Sponsor loop<kbd>L</kbd></button>
+  <button id="bRave" data-a="rave">Rave board<kbd>R</kbd></button>
+  <button id="bPlane" class="sh" data-a="plane">Airplane<kbd>P</kbd></button>
+  <button id="bIss" class="sh" data-a="iss">ISS<kbd>I</kbd></button>
+  <button data-a="ctlwin">Control window<kbd>W</kbd></button>
+  <button id="bFs" data-a="fs">Full screen</button>
+</div>
+
+<script>
+/*ADAPTER*/
+// Turns civicAPI race records into board races. Pure functions: no DOM, safe to test anywhere.
+const ADAPT = (() => {
+  const OV = {'Keisha Lance Bottoms':'LANCE BOTTOMS','Monica De La Cruz':'DE LA CRUZ','Carlos De La Cruz':'DE LA CRUZ',
+    'Kristen McDonald Rivet':'MCDONALD RIVET','Marie Gluesenkamp Perez':'GLUESENKAMP PEREZ','María Elvira Salazar':'SALAZAR'};
+  const SUF = /^(Jr\.?|Sr\.?|II|III|IV)$/i;
+  function sur(n){
+    n = String(n || '').trim(); if (OV[n]) return OV[n];
+    const t = n.split(/\s+/); if (t.length < 2) return n.toUpperCase();
+    return (SUF.test(t[t.length-1]) ? t.slice(-2).join(' ') : t[t.length-1]).toUpperCase();
+  }
+  const party = (p, name) => /^(yes|no)$/i.test(String(name).trim()) ? 'Q'
+    : /^dem/i.test(p) ? 'D' : /^rep/i.test(p) ? 'R' : /^lib/i.test(p) ? 'L' : 'I';
+  const cands = x => (x.candidates || []).map(c => ({n:sur(c.name), p:party(c.party, c.name), v:+c.votes || 0,
+    pct:(c.percent == null ? null : +c.percent), win:!!c.winner}));
+  const SQ_SUB = {'845':'JUDICIAL PANEL', '847':'PROPERTY TAX', '844':'MFG. TAX', '846':'VOTER ID'};
+  const OK_TYPES = {'Governor':['OK-GOV','OKLAHOMA GOVERNOR',4], 'Lieutenant Governor':['OK-LG','OK LT. GOVERNOR',2.5],
+    'Attorney General':['OK-AG','OK ATTORNEY GENERAL',2.5], 'State Treasurer':['OK-TREAS','OK TREASURER',2],
+    'State Auditor':['OK-AUD','OK AUDITOR',2], 'Superintendent':['OK-SUPT','OK SUPERINTENDENT',2.5],
+    'Labor Commissioner':['OK-LABOR','OK LABOR COMMISSIONER',2], 'Insurance Commissioner':['OK-INS','OK INSURANCE COMM.',2],
+    'Corporation Commissioner':['OK-CORP','OK CORPORATION COMM.',2], 'US Senate':['OK-SEN','OK U.S. SENATE',2.5]};
+  // Which Oklahoma races go on the board, and what they're called there. Returns null to skip.
+  function okMeta(x){
+    const n = x.election_name || '', t = x.type, d = x.district || '';
+    if ((x.candidates || []).length < 2 || t === 'Judicial') return null;
+    if (OK_TYPES[t]) { const [id, label, w] = OK_TYPES[t]; return {id, label, w}; }
+    if (t === 'House of Representatives' && /^OK-\d+/.test(d)) { const k = parseInt(d.slice(3), 10);
+      return {id:'OK-' + String(k).padStart(2, '0'), label:'OKLAHOMA ' + k, w:2}; }
+    if ((t === 'State House' || t === 'State Senate') && /^OK-(HD|SD)-\d+/.test(d)) { const pre = d.slice(3, 5), k = parseInt(d.slice(6), 10);
+      return {id:'OK-' + pre + k, label:pre + ' ' + k, w:1}; }
+    let m = n.match(/(?:State )?Question (\d+)/);
+    if (m) return {id:'SQ' + m[1], label:'SQ ' + m[1] + (SQ_SUB[m[1]] ? ' · ' + SQ_SUB[m[1]] : ''), w:4, m:true};
+    m = n.match(/Oklahoma County (.+)$/);
+    if (m && (t === 'County' || t === 'Local' || t === 'Referendum')) {
+      const what = m[1].trim();
+      if (/proposition|question/i.test(what)) return {id:'OKCO-Q', label:'OK COUNTY QUESTION', w:1.5, m:true};
+      const cm = what.match(/Commissioner District (\d+)/i);
+      if (cm) return {id:'OKCO-C' + cm[1], label:'OK CO. COMMISSIONER ' + cm[1], w:1.5};
+      return {id:'OKCO-' + what.replace(/\W+/g, '').toUpperCase().slice(0, 6), label:'OK COUNTY ' + what.toUpperCase(), w:1.5};
+    }
+    return null;
+  }
+  // Key that ties a national race on the board to its civicAPI record.
+  const natKey = x => x.type === 'US Senate' ? 'S:' + x.province : x.type === 'Governor' ? 'G:' + x.province
+    : x.type === 'House of Representatives' ? 'H:' + x.district : null;
+  return {sur, party, cands, okMeta, natKey};
+})();
+/*END ADAPTER*/
+
+(function(){
+const MODE_DEFAULT = /*__MODE__*/'sample';
+const BAKED = /*__DATA__*/[];
+const HASH = location.hash.replace('#', '');
+// live: real civicAPI results for Nov. 3. rehearse: real civicAPI results from the Aug. 25 runoff. sample: invented numbers.
+const MODE = HASH === 'sample' ? 'sample' : HASH === 'rehearse' ? 'rehearse' : MODE_DEFAULT;
+const LIVE = MODE !== 'sample';
+const API = 'https://civicapi.org/api/v2/race/search';
+const DATE = MODE === 'rehearse' ? '2026-08-25' : '2026-11-03';
+const POLL_S = Math.max(5, +new URLSearchParams(location.search).get('poll') || 60);   // ?poll=10 for testing
+
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const stage = $('stage'), grid = $('grid'), board = $('board');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rand = (a,b) => a + Math.random()*(b-a);
+const CARD = {x:480, y:282, w:960, h:440};
+
+// Headline races that keep their own tile: left edge Oklahoma, right edge the state questions.
+const PINS = {0:'OK-GOV', 5:'OK-05', 4:'SQ845', 9:'SQ847'};
+// Seat charts count the way DDHQ does: seats not on the ballot this year (Senate 34 D, 31 R per civicAPI's chamber record and
+// DDHQ, Nov. 1; every House seat is up), plus each Senate and House race called tonight. Independents show in teal.
+const SEN0 = {D:34, R:31}, HOUSE0 = {D:0, R:0}, SEATS_UP = {S:35, H:435};
+// Sample mode only: the safe seats the tiles don't show, called a few at a time so the charts climb the way the real night will.
+const SAMPLE_SAFE = {S:{D:9, R:11}, H:{D:184, R:165}}, safeDone = {S:{D:0, R:0}, H:{D:0, R:0}};
+const CFG = {demo: !LIVE};
+const T = () => CFG.demo
+  ? {swap:[7000,14000], every:75000, first:40000, hold:14000, callEvery:25000, firstCall:10000, sim:2500}
+  : {swap:[50000,80000], every:300000, first:300000, hold:60000, callEvery:90000, firstCall:60000, sim:15000};
+const CALL_HOLD = 10000;
+// The Election Night Show runs on the home screen; the results board is for the Cheese Rave. Nothing switches by itself:
+// the booth moves between them. The page opens on the home screen (?scene=rave or #rehearse opens on the board).
+const SCENE_Q = new URLSearchParams(location.search).get('scene');
+let scene = SCENE_Q === 'show' || SCENE_Q === 'rave' ? SCENE_Q : (MODE === 'rehearse' || HASH === 'rave' ? 'rave' : 'show');
+
+// ===== Show content: edit these =====
+// Top 10 list. Andy is still writing it: replace the title and lines when it's final.
+const TOP10 = {
+  title: 'TOP 10 LIST TITLE GOES HERE',
+  lines: {10:'Line ten goes here', 9:'Line nine goes here', 8:'Line eight goes here', 7:'Line seven goes here',
+          6:'Line six goes here', 5:'Line five goes here', 4:'Line four goes here', 3:'Line three goes here',
+          2:'Line two goes here', 1:'Line one goes here'},
+};
+// Title slides for segments and guests. Which number key shows each one is set in CUES below.
+const TITLES = [
+  {kicker:'TONIGHT\u2019S GUEST', text:'John Shack'},
+  {kicker:'SEGMENT', text:'Wait, Wait...I know this!'},
+  {kicker:'TONIGHT\u2019S GUEST', text:'AJ Griffin'},
+  {kicker:'TONIGHT\u2019S GUEST', text:'Erika Lucas'},
+];
+// Sponsor slides, in order. Logo keys are the files in logos/ (see logos/logos.json for the names).
+const SPONSORS = [
+  {name:'Sponsors 1', kicker:'THE ELECTION NIGHT SHOW & CHEESE RAVE', head:'Thank you to our sponsors', logos:['gazette', 'infocus']},
+  {name:'Sponsors 2', kicker:'THE ELECTION NIGHT SHOW & CHEESE RAVE', head:'Thank you to our sponsors',
+   logos:['cfo', 'kpg', 'mitchelltalks', 'vox', 'sawyer', 'focus', 'konjo']},
+  {name:'Food sponsors', kicker:'THE ELECTION NIGHT SHOW & CHEESE RAVE', head:'Thank you to our food sponsors',
+   logos:['boomtown', 'fuzzys', 'tacoempire', 'eastside', 'stonehorse', 'empireslice']},
+];
+// Number keys in run-of-show order: the first entry is key 1. Each shows a sponsor slide, a title slide, or the Top 10
+// (each press of the Top 10's key adds the next line, the same as T).
+const CUES = [{sponsor:0}, {sponsor:1}, {sponsor:2}, {title:0}, {title:1}, {top10:true}, {title:2}, {title:3}];
+const cueName = c => c.sponsor != null ? SPONSORS[c.sponsor].name : c.title != null ? TITLES[c.title].text : 'Top 10: next';
+const SPON_SECS = 12;   // how long each slide holds when the sponsor loop is running
+const LOGO_TRIM = {eastside:.84, sawyer:.88};   // dense, heavy logos read bigger than they are: nudge them down
+// ====================================
+const LOGOS = /*__LOGOS__*/{};
+const CALLED_WEIGHT = 0.4;   // called races stay in the rotation, just less often
+const MAX_QUEUED_CALLS = 5;  // a burst bigger than this gets gold outlines without the animation
+
+// ----- races -----
+let RACES = BAKED.map(b => ({...b, cands: b.cands.map(c => ({n:c.n, p:c.p, v:0, pct:null, win:false})), rep:0, called:null, fin:false, seen:false, has:false}));
+let BY_ID = {};
+const reindex = () => { BY_ID = Object.fromEntries(RACES.map(r => [r.id, r])); };
+reindex();
+const rank = c => c.p === 'Q' ? (c.n === 'YES' ? 0 : 1) : ({D:0, R:1})[c.p] ?? 2;
+// The two candidates a tile shows: top two by votes, ordered Democrat then Republican (or Yes then No).
+function top2(r){
+  const c = r.cands.slice();
+  const any = c.some(x => x.v > 0);
+  const pair = (any ? c.sort((a, b) => b.v - a.v) : c.sort((a, b) => rank(a) - rank(b))).slice(0, 2);
+  return pair.sort((a, b) => rank(a) - rank(b));
+}
+
+// ----- sample data engine (only in sample mode) -----
+function setShare(r){
+  const a = Math.round(r.cur*9.85)/10, b = Math.round((100-r.cur)*9.85)/10;
+  r.cands.forEach((c, i) => { c.pct = i === 0 ? a : i === 1 ? b : 0; c.v = c.pct; });
+  r.has = true;
+}
+function simInit(){ RACES.forEach(r => { r.rep = rand(8, 65); r.cur = r.share + rand(-4,4); setShare(r); }); }
+function simTick(){
+  for (const r of RACES){
+    if (r.called) continue;
+    r.rep = Math.min(100, r.rep + Math.random()*3.2);
+    const wobble = (1 - r.rep/100) * 2.4;
+    r.cur = Math.max(3, Math.min(97, r.share + (r.cur - r.share)*0.75 + rand(-wobble, wobble)));
+    setShare(r);
+    if (!r.pool && r.rep > 70 && Math.abs(r.cur-50) > 1.5 && Math.random() < 0.22) callRace(r, r.cur >= 50 ? 0 : 1, false);
+  }
+  for (const ch of ['S', 'H']) for (const p of ['D', 'R']){
+    const left = SAMPLE_SAFE[ch][p] - safeDone[ch][p];
+    if (left > 0 && Math.random() < .7) safeDone[ch][p] += Math.min(left, Math.max(1, Math.round(left * rand(.04, .12))));
+  }
+  refresh();
+}
+function demoCall(){
+  const onScreen = slots.filter(s => s.race && !s.busy && !s.race.called).map(s => s.race);
+  const pick = onScreen.sort((a, b) => Math.abs(b.cur-50) - Math.abs(a.cur-50))[0];
+  if (pick){ pick.rep = Math.max(pick.rep, 78); callRace(pick, pick.cur >= 50 ? 0 : 1, true); }
+}
+
+// ----- live data from civicAPI -----
+// civicAPI tops out at 99% reporting for Oklahoma races (Aug. 25 runoff), so 99% means every precinct is in.
+const ALL_IN = 99;
+const allIn = prov => prov === 'OK' ? ALL_IN : 100;   // elsewhere, all in means 100%
+// Every Senate and House race civicAPI lists (not just the ones on tiles), so the seat charts count the way DDHQ does:
+// seats not on the ballot, plus each race called tonight. Map of civicAPI id -> winning party, or null while open.
+const NAT = {S:new Map(), H:new Map()}, REPORTING = new Set(), CIV_SEATS = {};
+function natCall(x){
+  const c = ADAPT.cands(x), w = c.find(k => k.win);
+  if (w) return w.p;
+  if (c.length === 1) return REPORTING.has(x.province) ? c[0].p : null;   // unopposed: counts once that state's results start coming in
+  if ((+x.percent_reporting || 0) >= allIn(x.province)){ const o = c.slice().sort((a, b) => b.v - a.v); if (o[0].v > o[1].v) return o[0].p; }
+  return null;
+}
+// Index of the candidate ahead on votes, or -1 when nobody is ahead.
+function leaderIdx(r){
+  const order = r.cands.map((c, i) => [c.v, i]).sort((a, b) => b[0] - a[0]);
+  return order.length > 1 && order[0][0] > order[1][0] ? order[0][1] : (order.length === 1 && order[0][0] > 0 ? order[0][1] : -1);
+}
+const QUERIES = MODE === 'rehearse' ? {ok:'&province=OK'}
+  : {ok:'&province=OK', sen:'&type=US%20Senate', gov:'&type=Governor', house:'&type=House%20of%20Representatives'};
+let okBuilt = false, failCount = 0, lastOk = null, cycle = 0, testSeen = false;
+async function getRaces(extra){
+  const ac = new AbortController(), to = setTimeout(() => ac.abort(), 25000);
+  try {
+    const res = await fetch(`${API}?startDate=${DATE}&endDate=${DATE}&limit=2000${extra}`, {signal:ac.signal});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return (await res.json()).races || [];
+  } finally { clearTimeout(to); }
+}
+function applyRecord(r, x){   // x: the civicAPI record
+  r.cands = ADAPT.cands(x);
+  r.rep = +x.percent_reporting || 0;
+  r.has = r.cands.some(c => c.v > 0);
+  if (x.test_data) testSeen = true;
+  const wi = r.cands.findIndex(c => c.win);
+  if (wi >= 0 && !r.called) callRace(r, wi, r.seen, 'call');   // already called the first time we see it: no animation
+  if (!r.called && r.rep >= allIn(x.province)){ const li = leaderIdx(r); if (li >= 0) callRace(r, li, r.seen, 'all'); }
+  r.fin = false;
+  r.seen = true;
+}
+function buildOklahoma(list){
+  const okRaces = [], used = new Set();
+  for (const x of list){
+    if (x.province !== 'OK') continue;
+    const m = ADAPT.okMeta(x); if (!m || used.has(m.id)) continue;
+    used.add(m.id);
+    okRaces.push({id:m.id, label:m.label, w:m.w, m:!!m.m, ok:true, pool:true, ch:null, civ:x.id,
+      cands:[], rep:0, called:null, fin:false, seen:false, has:false});
+  }
+  if (!okRaces.length) return false;
+  RACES = RACES.filter(r => !r.ok).concat(okRaces);
+  reindex(); resolvePins(); okBuilt = true;
+  return true;
+}
+function ingest(list){
+  if (!okBuilt && buildOklahoma(list)) reflipAll();
+  const byCiv = {};
+  RACES.forEach(r => { if (r.civ) byCiv[r.civ] = r; else if (r.key) byCiv[r.key] = r; });
+  // A state is reporting once a contested race there has real votes. (Uncontested races can show 100% before polls close:
+  // Oklahoma's state auditor race did on Nov. 1.)
+  for (const x of list) if ((x.candidates || []).length > 1 && x.candidates.some(c => +c.votes > 0)) REPORTING.add(x.province);
+  for (const x of list){
+    const ch = x.type === 'US Senate' ? 'S' : x.type === 'House of Representatives' ? 'H' : null;
+    if (ch && x.province === 'US'){   // civicAPI's own chamber totals: kept only to cross-check ours (cheeseBoard.seats())
+      CIV_SEATS[ch] = Object.fromEntries((x.candidates || []).filter(c => c.seats).map(c => [c.party, c.seats])); continue; }
+    if (ch) NAT[ch].set(x.id, natCall(x));
+    const r = x.province === 'OK' ? byCiv[x.id] : byCiv[ADAPT.natKey(x)];
+    if (r) applyRecord(r, x);
+  }
+}
+async function poll(){
+  const names = Object.keys(QUERIES).filter(k => k !== 'house' || cycle % 2 === 0);   // House list is big: every other pass
+  const got = await Promise.allSettled(names.map(k => getRaces(QUERIES[k])));
+  const ok = got.filter(g => g.status === 'fulfilled');
+  ok.forEach(g => ingest(g.value));
+  if (ok.length) lastOk = new Date();
+  failCount = ok.length === got.length ? 0 : failCount + 1;
+  refresh(); setStatus();
+  cycle++;
+  setTimeout(poll, (failCount ? Math.min(300, POLL_S * 2 ** (failCount - 1)) : POLL_S) * 1000);
+}
+const hhmm = d => d.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+function setStatus(){
+  const el = $('status');
+  $('testChip').hidden = !testSeen;
+  if (MODE === 'sample'){ el.className = 'tag sample'; el.textContent = 'SAMPLE NUMBERS · NOT REAL'; return; }
+  const tag = MODE === 'rehearse' ? 'REHEARSAL · AUG 25 RUNOFF' : 'LIVE';
+  if (!lastOk){ el.className = failCount ? 'tag err' : 'tag wait'; el.textContent = failCount ? 'RESULTS FEED UNREACHABLE · RETRYING' : 'CONNECTING TO RESULTS'; return; }
+  if (failCount){ el.className = 'tag err'; el.textContent = `RESULTS DELAYED · LAST ${hhmm(lastOk)}`; return; }
+  el.className = 'tag live'; el.textContent = `${tag} · UPDATED ${hhmm(lastOk)}`;
+}
+
+// ----- seat counts -----
+function tally(){
+  const s = {D:SEN0.D, R:SEN0.R, I:0, open:0, fD:0, fR:0}, h = {D:HOUSE0.D, R:HOUSE0.R, I:0, open:0, fD:0, fR:0};
+  const add = (t, p) => { if (!p) t.open++; else if (p === 'D' || p === 'R') t[p]++; else t.I++; };
+  for (const [ch, t] of [['S', s], ['H', h]]){
+    if (LIVE){ for (const p of NAT[ch].values()) add(t, p); t.open += Math.max(0, SEATS_UP[ch] - NAT[ch].size); }   // not listed yet: open
+    else { const d = safeDone[ch], S = SAMPLE_SAFE[ch]; t.D += d.D; t.R += d.R; t.open += S.D - d.D + S.R - d.R;
+      for (const r of RACES) if (r.ch === ch) add(t, r.called && r.called.p); }
+  }
+  for (const r of RACES){   // pickups: only the tracked races know which party holds the seat now
+    const t = r.ch === 'S' ? s : r.ch === 'H' ? h : null;
+    if (t && r.called && r.held && r.called.p !== r.held){ if (r.called.p === 'D') t.fD++; else if (r.called.p === 'R') t.fR++; }
+  }
+  return {s, h};
+}
+// Seat charts in the style of DDHQ's chamber graphics: rows of dots in a half circle, one per seat. Seats are ordered
+// left to right by angle, so Democrats fill a wedge from the left, Republicans from the right, undecided stay grey in the
+// middle. The gold dotted line marks the center.
+const SVGNS = 'http://www.w3.org/2000/svg';
+function seatChart(svg, N, R, inner){
+  const k = 2 * N * (1 - inner) / (Math.PI * (1 + inner));   // rows that make the spacing along and across rows about equal
+  const rows = Math.max(2, Math.round((1 + Math.sqrt(1 + 4 * k)) / 2));
+  const r0 = R * inner, radii = Array.from({length:rows}, (_, i) => r0 + (R - r0) * i / (rows - 1));
+  const sum = radii.reduce((a, b) => a + b, 0), counts = radii.map(r => Math.round(N * r / sum));
+  for (let diff = N - counts.reduce((a, b) => a + b, 0), i = rows - 1; diff; i = (i + rows - 1) % rows){ const d = Math.sign(diff); counts[i] += d; diff -= d; }
+  const pitch = Math.min(Math.PI * sum / N, (R - r0) / (rows - 1)), dr = pitch * .41, pad = dr + 3;
+  const seats = [];
+  radii.forEach((r, i) => { const n = counts[i]; for (let j = 0; j < n; j++){ const a = n > 1 ? Math.PI * (1 - j / (n - 1)) : Math.PI / 2; seats.push({a, r}); } });
+  seats.sort((p, q) => (q.a - p.a) || (p.r - q.r));
+  const W = 2 * (R + pad), H = R + 2 * pad;
+  svg.setAttribute('viewBox', `${-R - pad} ${-R - pad} ${W} ${H}`); svg.setAttribute('width', W); svg.setAttribute('height', H);
+  const maj = document.createElementNS(SVGNS, 'line');
+  maj.setAttribute('class', 'maj'); maj.setAttribute('x1', 0); maj.setAttribute('x2', 0); maj.setAttribute('y1', dr); maj.setAttribute('y2', -(r0 - pitch * .7));
+  maj.setAttribute('stroke-width', Math.max(2.5, dr * .45)); maj.setAttribute('stroke-dasharray', `${Math.max(3, dr * .5)} ${Math.max(5, dr * .9)}`);
+  svg.appendChild(maj);
+  svg._dots = seats.map(s => { const c = document.createElementNS(SVGNS, 'circle');
+    c.setAttribute('cx', (s.r * Math.cos(s.a)).toFixed(2)); c.setAttribute('cy', (-s.r * Math.sin(s.a)).toFixed(2)); c.setAttribute('r', dr.toFixed(2));
+    c.setAttribute('class', 'o'); c._cls = 'o'; svg.appendChild(c); return c; });
+}
+// mode 'pop': newly won seats flash in where they land. 'sweep': both sides fill in from the edges (on reveal).
+function paintSeats(svg, D, I, R, mode){
+  const dots = svg._dots, N = dots.length;
+  if (mode === 'sweep') dots.forEach(c => { c._cls = 'o'; c.setAttribute('class', 'o'); c.getAnimations().forEach(a => a.cancel()); });
+  dots.forEach((c, k) => {
+    const cls = k < D ? 'd' : k < D + I ? 'i' : k >= N - R ? 'r' : 'o';
+    if (c._cls === cls) return;
+    c._cls = cls; c.setAttribute('class', cls);
+    if (RM || cls === 'o' || !mode) return;
+    const delay = mode === 'sweep' ? (cls === 'r' ? (N - 1 - k) / Math.max(1, R) : k / Math.max(1, D + I)) * 1300 : 0;
+    c.animate([{transform:'scale(2.6)', opacity:0}, {transform:'scale(.85)', opacity:1, offset:.6}, {transform:'scale(1)', opacity:1}],
+      {duration:mode === 'sweep' ? 520 : 900, delay, easing:'cubic-bezier(.2,.8,.3,1)', fill:'backwards'});
+  });
+}
+seatChart($('sSeats'), 100, 142, .42); seatChart($('hSeats'), 435, 142, .42);
+seatChart($('bSSeats'), 100, 372, .55); seatChart($('bHSeats'), 435, 372, .55);
+let lastCounts = '', countsShown = false;
+function sweepHeader(){ const {s, h} = tally(); paintSeats($('sSeats'), s.D, s.I, s.R, 'sweep'); paintSeats($('hSeats'), h.D, h.I, h.R, 'sweep'); countsShown = true; }
+function updateCounts(){
+  const {s, h} = tally();
+  const key = JSON.stringify([s,h]); if (key === lastCounts) return; lastCounts = key;
+  setNum($('sD'), s.D); setNum($('sR'), s.R); setNum($('hD'), h.D); setNum($('hR'), h.R);
+  if (!countsShown && scene === 'rave') sweepHeader();
+  else { paintSeats($('sSeats'), s.D, s.I, s.R, countsShown && 'pop'); paintSeats($('hSeats'), h.D, h.I, h.R, countsShown && 'pop'); }
+  if (boardOn){ paintSeats($('bSSeats'), s.D, s.I, s.R, 'pop'); paintSeats($('bHSeats'), h.D, h.I, h.R, 'pop'); }
+  $('bSDet').textContent = `${s.open} OF ${SEATS_UP.S} RACES UNCALLED  ·  PICKUPS  D ${s.fD}  R ${s.fR}${s.I?`  ·  IND ${s.I}`:''}`;
+  $('bHDet').textContent = `${h.open} OF ${SEATS_UP.H} RACES UNCALLED  ·  PICKUPS  D ${h.fD}  R ${h.fR}${h.I?`  ·  IND ${h.I}`:''}`;
+  if (boardOn){ setNum($('bSD'), s.D); setNum($('bSR'), s.R); setNum($('bHD'), h.D); setNum($('bHR'), h.R); }
+}
+function setNum(el, v){ const t = String(v); if (el.textContent !== t) scramble(el, t, 500); }
+
+// ----- split-flap text -----
+const GL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function scramble(el, text, dur){
+  if (RM){ el.textContent = text; return; }
+  const id = (el._sid||0) + 1; el._sid = id; const t0 = performance.now(), n = text.length;
+  (function f(now){
+    if (el._sid !== id) return;
+    const t = (now - t0) / dur; let s = '';
+    for (let i=0;i<n;i++){
+      const c = text[i];
+      if (!/[A-Z0-9]/i.test(c) || t > 0.2 + 0.8*(i/Math.max(1,n-1))) { s += c; continue; }
+      s += /\d/.test(c) ? String(Math.random()*10|0) : GL[Math.random()*26|0];
+    }
+    el.textContent = s;
+    if (t < 1) requestAnimationFrame(f); else el.textContent = text;
+  })(t0);
+}
+function fitText(el, max, min){
+  let size = max; el.style.fontSize = size+'px';
+  while (el.scrollWidth > el.clientWidth + 1 && size > min){ size -= 1; el.style.fontSize = size+'px'; }
+}
+
+// ----- tiles -----
+const OK_VARIANTS = ['v-ok-a','v-ok-b','v-ok-c'], NAT_VARIANTS = ['v-n-a','v-n-b','v-n-c'];
+const slots = [];
+for (let i=0;i<15;i++){
+  const el = document.createElement('div');
+  el.className = 'tile';
+  el.style.setProperty('--bd', rand(6,13).toFixed(1)+'s'); el.style.setProperty('--bdl', (-rand(0,12)).toFixed(1)+'s');
+  el.innerHTML = `<div class="face"><div class="top"><div class="lbl"></div><span class="ctag">CALLED</span><span class="ftag">FINAL</span></div>
+    <div class="cand"><span class="pt"></span><span class="nm"></span><span class="pc"></span></div>
+    <div class="cand"><span class="pt"></span><span class="nm"></span><span class="pc"></span></div>
+    <div class="ft"><span class="sbar"><i></i></span><span class="in"></span></div></div>`;
+  grid.appendChild(el);
+  const q = s => el.querySelectorAll(s);
+  slots.push({el, i, pin:null, race:null, timer:null, busy:false, names:'', ctag:q('.ctag')[0],
+    lbl:q('.lbl')[0], rows:[...q('.cand')], pts:[...q('.pt')], nms:[...q('.nm')], vs:[...q('.pc')], bar:q('.sbar i')[0], inn:q('.in')[0]});
+}
+let pinned = new Set();
+function resolvePins(){
+  slots.forEach(s => { s.pin = PINS[s.i] && BY_ID[PINS[s.i]] && BY_ID[PINS[s.i]].pool ? BY_ID[PINS[s.i]] : null; });
+  pinned = new Set(slots.filter(s => s.pin).map(s => s.pin));
+}
+function fitSlot(s){ s.nms.forEach(n => fitText(n, 34, 20)); }
+// Size the race name against its real text, not whatever the flip animation is showing this frame.
+function fitLabel(s){ const shown = s.lbl.textContent; s.lbl.textContent = s.race.label; fitText(s.lbl, 15, 10); s.lbl.textContent = shown; }
+function paint(s, fresh){
+  const r = s.race, pair = top2(r);
+  const names = pair.map(c => c.n).join('|');
+  if (fresh || names !== s.names){
+    s.names = names;
+    s.lbl.textContent = r.label;
+    pair.forEach((c, i) => { s.pts[i].className = 'pt ' + c.p; s.pts[i].dataset.l = c.p === 'Q' ? c.n[0] : c.p; s.nms[i].textContent = c.n; });
+    fitSlot(s);
+    scramble(s.lbl, r.label, 560);
+    pair.forEach((c, i) => scramble(s.nms[i], c.n, 650));
+  }
+  const tot = pair[0].v + pair[1].v;
+  const called = r.called && !queue.includes(r) && nowCalling !== r ? r.called : null;   // hold the gold until its call has played
+  const lead = called ? pair.findIndex(c => c.n === called.n) : (tot > 0 ? (pair[0].v >= pair[1].v ? 0 : 1) : -1);
+  if (called) s.ctag.textContent = called.kind === 'all' ? 'ALL IN' : 'CALLED';
+  const tagged = !!called || !!r.fin;
+  s.el.classList.toggle('called', !!called);
+  s.el.classList.toggle('final', !!r.fin);
+  if (fresh || tagged !== s.tagged){ s.tagged = tagged; fitLabel(s); }   // the CALLED/FINAL tag takes room from the race name
+  pair.forEach((c, i) => {
+    const t = r.has && c.pct != null ? c.pct.toFixed(1) + '%' : '—';
+    if (s.vs[i].textContent !== t) scramble(s.vs[i], t, fresh ? 650 : 320);
+    s.rows[i].classList.toggle('lead', lead === i);
+    s.rows[i].classList.toggle('trail', lead >= 0 && lead !== i);
+  });
+  s.bar.style.width = (tot > 0 ? pair[0].v / tot * 100 : 0).toFixed(1) + '%';
+  s.inn.textContent = r.has || r.rep > 0 ? Math.floor(r.rep) + '% IN' : 'AWAITING RESULTS';
+}
+function refresh(){
+  slots.forEach(s => { if (s.race && !s.busy && !boardOn) paint(s, false); });
+  updateCounts();
+}
+const recent = [];
+function pickRace(){
+  const shown = new Set(slots.map(s => s.race));
+  const ok = r => r.pool && !pinned.has(r) && !shown.has(r) && !queue.includes(r);
+  let pool = RACES.filter(r => ok(r) && !recent.includes(r));
+  if (!pool.length) pool = RACES.filter(ok);
+  if (!pool.length) return null;
+  const w = r => r.w * (r.called ? CALLED_WEIGHT : 1);
+  let x = Math.random() * pool.reduce((t, r) => t + w(r), 0);
+  for (const r of pool){ x -= w(r); if (x <= 0) return r; }
+  return pool[pool.length-1];
+}
+function setRace(s, r){
+  if (s.race && s.race !== r){ recent.push(s.race); if (recent.length > 16) recent.shift(); }
+  s.race = r;
+  const set = r.ok ? OK_VARIANTS : NAT_VARIANTS;
+  s.el.className = 'tile ' + set[Math.random()*set.length|0] + (s.pin ? ' pinned' : '');
+  paint(s, true);
+}
+async function flipOut(el, delay=0){
+  if (RM){ el.style.opacity = '0'; return; }
+  await el.animate([{transform:'rotateX(0deg)'},{transform:'rotateX(90deg)'}], {duration:230, delay, easing:'ease-in'}).finished;
+  el.style.transform = 'rotateX(90deg)';
+}
+async function flipIn(el, delay=0){
+  if (RM){ el.style.opacity = ''; return; }
+  const a = el.animate([{transform:'rotateX(-90deg)'},{transform:'rotateX(6deg)', offset:.75},{transform:'rotateX(0deg)'}], {duration:380, delay, easing:'ease-out', fill:'backwards'});
+  el.style.transform = ''; await a.finished;
+}
+function schedule(s){
+  clearTimeout(s.timer);
+  const [a, b] = T().swap, k = s.pin ? 2 : 1;          // pinned tiles re-flip less often
+  s.timer = setTimeout(() => swapSlot(s), rand(a, b) * k);
+}
+async function swapSlot(s){
+  if (s.busy || boardOn){ schedule(s); return; }
+  const r = s.pin || pickRace(); if (!r){ schedule(s); return; }
+  s.busy = true;
+  await flipOut(s.el); setRace(s, r); await flipIn(s.el);
+  s.busy = false; schedule(s);
+}
+// After the Oklahoma list is rebuilt from the live feed, every tile flips to the new set.
+async function reflipAll(){
+  while (boardOn || calling) await sleep(200);
+  slots.forEach(s => { s.busy = true; s.race = null; });
+  await Promise.all(slots.map((s, i) => flipOut(s.el, ((i%5) + Math.floor(i/5)) * 60)));
+  slots.forEach(s => setRace(s, s.pin || pickRace() || RACES[0]));
+  await Promise.all(slots.map((s, i) => flipIn(s.el, ((i%5) + Math.floor(i/5)) * 60)));
+  slots.forEach(s => { s.busy = false; schedule(s); });
+}
+
+// ----- race calls -----
+const queue = []; let calling = false, nowCalling = null;
+function callRace(r, idx, animate, kind){
+  if (r.called) return;
+  if (scene === 'show') animate = false;   // calls during the main show are logged quietly (gold outline, no animation)
+  const w = r.cands[idx];
+  r.called = {n:w.n, p:w.p, pct:w.pct, kind:kind || 'call'};   // kind: 'call' (a source called it) or 'all' (every precinct in)
+  r.fin = false;
+  updateCounts();
+  if (animate && r.pool && queue.length < MAX_QUEUED_CALLS){ queue.push(r); pump(); }
+  else slots.forEach(s => { if (s.race === r && !s.busy) paint(s, false); });
+}
+async function pump(){
+  if (calling || boardOn || sponStep >= 0 || !queue.length) return;   // calls wait while the sponsor slides are up
+  calling = true; const r = queue.shift(); nowCalling = r;
+  try { await playCall(r); } finally { calling = false; nowCalling = null; }
+  pump();
+}
+function stageBox(el){
+  const s = parseFloat(stage.style.getPropertyValue('--s')) || 1;
+  const sr = stage.getBoundingClientRect(), r = el.getBoundingClientRect();
+  return {x:(r.left-sr.left)/s, y:(r.top-sr.top)/s, w:r.width/s, h:r.height/s};
+}
+async function playCall(r){
+  const slot = slots.find(s => s.race === r);
+  if (slot){ slot.busy = true; while (slot.el.getAnimations().some(a => !(a instanceof CSSAnimation))) await sleep(60); }
+  const c = r.called, measure = c.p === 'Q';
+  const cls = measure ? (c.n === 'YES' ? 'Y' : 'N') : c.p;
+  const pct = c.pct != null ? (+c.pct).toFixed(1) + '%' : '';
+  const card = document.createElement('div');
+  card.className = 'call ' + cls;
+  card.innerHTML = `<div class="ci"><div class="ck">${c.kind === 'all' ? 'ALL PRECINCTS IN' : 'RACE CALL'}${MODE === 'sample' ? ' · SAMPLE' : ''}</div><div class="cr"></div><div class="cw"></div><div class="cm"></div></div>`;
+  const party = ({D:'DEMOCRAT',R:'REPUBLICAN',I:'INDEPENDENT',L:'LIBERTARIAN'})[c.p] || '';
+  card.querySelector('.cr').textContent = r.label;
+  card.querySelector('.cw').textContent = measure ? (c.n === 'YES' ? 'PASSES' : 'FAILS') : c.n;
+  card.querySelector('.cm').textContent = measure ? `${c.n}  ${pct}` : [party, pct].filter(Boolean).join('  ·  ');
+  stage.appendChild(card);
+  fitText(card.querySelector('.cw'), 124, 64); fitText(card.querySelector('.cr'), 52, 30);
+  const b = slot ? stageBox(slot.el) : {x:960-110, y:502-50, w:220, h:100};
+  const from = `translate(${b.x-CARD.x}px,${b.y-CARD.y}px) scale(${b.w/CARD.w},${b.h/CARD.h})`;
+  if (slot) slot.el.style.visibility = 'hidden';
+  const ci = card.querySelector('.ci');
+  if (RM){ ci.style.opacity = 1; }
+  else {
+    await card.animate([{transform:from},{transform:'none'}], {duration:780, easing:'cubic-bezier(.2,.85,.25,1)'}).finished;
+    $('flash').style.background = getComputedStyle(card).backgroundColor;
+    $('flash').animate([{opacity:.16},{opacity:0}], {duration:1100, easing:'ease-out'});
+    tintLasers(cls);
+    ci.animate([{opacity:0, transform:'translateY(10px)'},{opacity:1, transform:'none'}], {duration:480, fill:'forwards', easing:'ease-out'});
+    scramble(card.querySelector('.cw'), card.querySelector('.cw').textContent, 700);
+  }
+  await sleep(CALL_HOLD);
+  const off = cls === 'D' ? 'translateX(-1900px) rotate(-5deg)' : cls === 'R' ? 'translateX(1900px) rotate(5deg)' : 'translateY(-1150px)';
+  if (!RM) await card.animate([{transform:'none'},{transform:off}], {duration:1050, easing:'cubic-bezier(.55,0,.8,.2)', fill:'forwards'}).finished;
+  card.remove();
+  if (slot){
+    const next = slot.pin || pickRace() || r;   // a pinned race comes straight back, now outlined in gold
+    slot.el.style.transform = 'rotateX(90deg)'; slot.el.style.visibility = '';
+    setRace(slot, next);
+    await flipIn(slot.el); slot.busy = false; schedule(slot);
+  }
+}
+
+// ----- Congress takeover -----
+let boardOn = false;
+async function showBoard(){
+  if (boardOn || scene === 'show') return;
+  if (calling || queue.length || sponStep >= 0){ setTimeout(showBoard, 3000); return; }
+  boardOn = true;
+  while (slots.some(s => s.busy)) await sleep(80);
+  const {s, h} = tally();
+  ['bSD','bSR','bHD','bHR'].forEach(id => $(id).textContent = '');
+  paintSeats($('bSSeats'), 0, 0, 0); paintSeats($('bHSeats'), 0, 0, 0);
+  await Promise.all(slots.map((sl, i) => flipOut(sl.el, ((i%5) + Math.floor(i/5)) * 70)));
+  grid.style.visibility = 'hidden'; board.hidden = false;
+  const rows = [...board.children];
+  rows.forEach(r => r.style.transform = 'rotateX(-90deg)');
+  await Promise.all(rows.map((row, i) => (RM ? Promise.resolve() :
+    row.animate([{transform:'rotateX(-90deg)'},{transform:'rotateX(6deg)', offset:.7},{transform:'rotateX(0deg)'}], {duration:560, delay:i*200, easing:'ease-out', fill:'backwards'}).finished)
+    .then(() => { row.style.transform = ''; })));
+  paintSeats($('bSSeats'), s.D, s.I, s.R, 'sweep'); paintSeats($('bHSeats'), h.D, h.I, h.R, 'sweep');
+  await sleep(RM ? 0 : 700);
+  setNum($('bSD'), s.D); setNum($('bSR'), s.R); setNum($('bHD'), h.D); setNum($('bHR'), h.R);
+  await sleep(T().hold);
+  await Promise.all(rows.map((row, i) => flipOut(row, i*140)));
+  board.hidden = true; rows.forEach(r => r.style.transform = '');
+  grid.style.visibility = '';
+  await Promise.all(slots.map((sl, i) => flipIn(sl.el, ((i%5) + Math.floor(i/5)) * 70)));
+  boardOn = false;
+  slots.forEach(sl => { if (sl.race) paint(sl, false); });
+  pump();
+}
+
+// ----- background: lasers from the DJ booth, drifting haze, neon grid floor -----
+const bg = $('bg'), g = bg.getContext('2d');
+const COL = {teal:[58,214,210], pink:[255,111,181], gold:[255,214,46], D:[95,144,255], R:[255,92,92], Y:[239,255,252], N:[255,111,181], I:[58,214,210], L:[58,214,210]};
+const BEAMS = ['pink','teal','pink','teal','pink','teal','pink','teal'].map((c, i, a) => ({
+  col:c, base:-Math.PI/2 + (i-(a.length-1)/2)*0.2, amp:rand(.22,.5), speed:rand(.035,.09), ph:rand(0,6.28)}));
+let tint = null, tintAt = 0, phase = 0, lastT = performance.now();
+function tintLasers(cls){ tint = COL[cls] || COL.gold; tintAt = performance.now(); }
+const rgba = (c, a) => `rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
+function blob(x, y, r, c, a){
+  const gr = g.createRadialGradient(x, y, 0, x, y, r);
+  gr.addColorStop(0, rgba(c, a)); gr.addColorStop(1, rgba(c, 0));
+  g.fillStyle = gr; g.fillRect(x-r, y-r, r*2, r*2);
+}
+function drawBg(now){
+  if (scene === 'show'){ lastT = now; if (!RM) requestAnimationFrame(drawBg); return; }   // nothing to draw behind the skyline
+  const dt = Math.min(50, now - lastT) / 1000; lastT = now; phase += dt;   // accumulate phase so motion never jitters
+  g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, 1920, 1080);
+  g.globalCompositeOperation = 'lighter';
+  blob(960 + 520*Math.sin(phase*.05), 430 + 130*Math.cos(phase*.07), 900, COL.teal, .07);
+  blob(960 + 560*Math.cos(phase*.04 + 1), 560 + 150*Math.sin(phase*.06), 820, COL.pink, .06);
+  const beat = beatEnv(now);
+  const tk = tint ? Math.max(0, 1 - (now - tintAt)/2600) : 0;
+  const sx = 960, sy = 1130;
+  for (const b of BEAMS){
+    const ang = b.base + b.amp * Math.sin(phase * b.speed * 6.283 + b.ph);
+    const ex = sx + Math.cos(ang)*1600, ey = sy + Math.sin(ang)*1600;
+    const c = tk ? COL[b.col].map((v, j) => v + (tint[j] - v)*tk) : COL[b.col];
+    const a = .26 + beat*.3 + tk*.25;
+    const gr = g.createLinearGradient(sx, sy, ex, ey);
+    gr.addColorStop(0, rgba(c, a)); gr.addColorStop(.55, rgba(c, a*.35)); gr.addColorStop(1, rgba(c, 0));
+    g.strokeStyle = gr;
+    g.lineWidth = 16; g.globalAlpha = .22; g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex, ey); g.stroke();
+    g.lineWidth = 2; g.globalAlpha = 1; g.stroke();
+  }
+  // grid floor below the horizon line, rolling toward the audience
+  const hy = 850, by = 1080;
+  g.lineWidth = 1;
+  for (let i = -16; i <= 16; i++){
+    g.strokeStyle = rgba(COL.teal, .16); g.beginPath(); g.moveTo(960 + i*34, hy); g.lineTo(960 + i*260, by); g.stroke();
+  }
+  const N = 9;
+  for (let k = 0; k < N; k++){
+    const p = ((k + phase*0.45) % N) / N, y = hy + (by - hy) * p * p;
+    g.strokeStyle = rgba(COL.teal, .05 + .3*p + beat*.15); g.beginPath(); g.moveTo(0, y); g.lineTo(1920, y); g.stroke();
+  }
+  g.strokeStyle = rgba(COL.pink, .5 + beat*.3); g.lineWidth = 1.5; g.beginPath(); g.moveTo(64, hy); g.lineTo(1856, hy); g.stroke();
+  g.globalCompositeOperation = 'source-over';
+  if (!RM) requestAnimationFrame(drawBg);
+}
+requestAnimationFrame(drawBg);
+
+// ----- home screen: real stars twinkle; airplanes and the ISS fly between the sky and the skyline/moon layers -----
+const sky = $('skyfx'), sg = sky.getContext('2d');
+const STARS = /*__STARS__*/[].map(([x, y]) => ({x, y, r:rand(1.1, 1.9), sp:rand(.25, .9), ph:rand(0, 6.28)}));
+// Flight paths in stage pixels. Anything that drifts behind the moon or a building is hidden by those layers.
+const LANES = {
+  // Everything flies level, straight across, and well above the skyline (the Devon Tower's top is at y 383).
+  plane: [
+    {a:[1990, 170], b:[-70, 170], dur:[55, 75]},   // east to west, slips behind the moon
+    {a:[-70, 130], b:[1990, 130], dur:[55, 75]},   // west to east, high
+    {a:[1990, 290], b:[-70, 290], dur:[50, 68]},   // east to west, lower, still clear of the tower
+    {a:[-70, 235], b:[1990, 235], dur:[55, 75]},   // west to east, behind the moon
+  ],
+  iss: [
+    {a:[-40, 85], b:[1960, 85], dur:[34, 44]},
+    {a:[-40, 200], b:[1960, 200], dur:[38, 48]},
+    {a:[1960, 140], b:[-40, 140], dur:[34, 44]},
+  ],
+};
+const flyers = [];
+function launch(kind){
+  if (flyers.some(f => f.kind === kind)) return;
+  const L = LANES[kind][Math.random() * LANES[kind].length | 0];
+  const j = () => rand(-30, 30);
+  const dy = j();   // the same offset at both ends keeps the path level
+  flyers.push({kind, land:!!L.land, a:[L.a[0], L.a[1] + dy], b:[L.b[0], L.b[1] + dy], dur:rand(...L.dur) * 1000, t0:performance.now(), ph:rand(0, 1000)});
+}
+function glow(x, y, core, halo, rgb, a){
+  const gr = sg.createRadialGradient(x, y, 0, x, y, halo);
+  gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(.25, `rgba(${rgb},${a * .45})`); gr.addColorStop(1, `rgba(${rgb},0)`);
+  sg.fillStyle = gr; sg.beginPath(); sg.arc(x, y, halo, 0, 6.283); sg.fill();
+  sg.fillStyle = `rgba(255,255,255,${Math.min(1, a * 1.1)})`; sg.beginPath(); sg.arc(x, y, core, 0, 6.283); sg.fill();
+}
+function drawPlane(f, k, now){
+  const x = f.a[0] + (f.b[0] - f.a[0]) * k, y = f.a[1] + (f.b[1] - f.a[1]) * k;
+  const fade = f.land ? Math.min(1, (1 - k) / .12) : 1;
+  const ang = Math.atan2(f.b[1] - f.a[1], f.b[0] - f.a[0]), nx = -Math.sin(ang), ny = Math.cos(ang);
+  const t = now - f.t0 + f.ph;
+  sg.save(); sg.translate(x, y); sg.rotate(ang); sg.scale(1.35, 1.35);   // a barely-there silhouette, like a plane at night
+  sg.fillStyle = `rgba(14,18,30,${.8 * fade})`;
+  sg.fillRect(-11, -1.6, 22, 3.2); sg.fillRect(-2.5, -9, 5, 18); sg.fillRect(-11, -4, 3, 8);
+  sg.restore();
+  const port = [x + nx * 12, y + ny * 12], star = [x - nx * 12, y - ny * 12];
+  glow(port[0], port[1], 2.1, 13, '255,70,70', .9 * fade);    // steady red and green wingtip lights
+  glow(star[0], star[1], 2.1, 13, '80,255,140', .9 * fade);
+  if (t % 1000 < 110) glow(x, y + 2, 2.6, 18, '255,60,60', fade);   // red beacon, once a second
+  const s = t % 1500;
+  if (s < 60 || (s > 160 && s < 220)){ glow(port[0], port[1], 3.2, 34, '255,255,255', fade); glow(star[0], star[1], 3.2, 34, '255,255,255', fade); }
+  if (f.land) glow(x + Math.cos(ang) * 16, y + Math.sin(ang) * 16, 3.6, 40, '255,246,220', .85 * fade);
+}
+function drawISS(f, k){
+  const x = f.a[0] + (f.b[0] - f.a[0]) * k, y = f.a[1] + (f.b[1] - f.a[1]) * k;
+  const a = Math.min(1, k / .12) * Math.min(1, (1 - k) / .22);   // fades in, then dims into Earth's shadow
+  glow(x, y, 2.8, 20, '255,250,232', .95 * a);
+}
+function drawSky(now){
+  if (!RM) requestAnimationFrame(drawSky);
+  if (scene !== 'show' && !flyers.length) return;
+  sg.clearRect(0, 0, 1920, 1080);
+  for (const s of STARS){   // a soft pulse on the photo's own stars
+    const a = .55 * Math.max(0, Math.sin(now / 1000 * s.sp * 2 + s.ph)) ** 3;
+    if (a > .02) glow(s.x, s.y, s.r * .6, s.r * 5, '255,255,255', a);
+  }
+  for (let i = flyers.length - 1; i >= 0; i--){
+    const f = flyers[i], k = (now - f.t0) / f.dur;
+    if (k >= 1){ flyers.splice(i, 1); continue; }
+    f.kind === 'plane' ? drawPlane(f, k, now) : drawISS(f, k);
+  }
+}
+requestAnimationFrame(drawSky);
+const SKY_GAP = () => CFG.demo ? {plane:[15, 30], iss:[40, 70]} : {plane:[75, 150], iss:[240, 420]};
+function skyLoop(kind){ const [a, b] = SKY_GAP()[kind]; setTimeout(() => { if (scene === 'show' && !RM) launch(kind); skyLoop(kind); }, rand(a, b) * 1000); }
+skyLoop('plane'); skyLoop('iss');
+
+// ----- Top 10: 10 through 6 build up from the bottom, then a fresh panel for 5 through 1, then back home -----
+const t10 = $('t10'), t10rows = $('t10rows');
+let t10Step = -1;   // -1 closed, 0 header only, 1-5 = #10-#6 shown, 6-10 = #5-#1 shown
+const t10NumAt = step => step >= 1 && step <= 10 ? 11 - step : null;
+function t10Next(){ const s = t10Step + 1; return s === 0 ? 'Open the Top 10' : s <= 10 ? `#${11 - s}: ${TOP10.lines[11 - s]}` : 'Close the list, back to the home screen'; }
+function fitLines(el, max, min, lines){
+  let size = max; el.style.fontSize = size + 'px';
+  while (el.scrollHeight > el.clientHeight + 2 && size > min){ size -= 1; el.style.fontSize = size + 'px'; }
+}
+function addT10Line(n){
+  const row = document.createElement('div'); row.className = 't10r';
+  row.innerHTML = '<div class="no"></div><div class="tx"></div>';
+  row.querySelector('.no').textContent = n;
+  const tx = row.querySelector('.tx'); tx.textContent = TOP10.lines[n] || '';
+  t10rows.appendChild(row);
+  fitLines(tx, 40, 26);
+  if (RM) return;
+  row.querySelector('.no').animate([{transform:'scale(1.9)', opacity:0, filter:'brightness(2)'}, {transform:'scale(.94)', opacity:1, offset:.7}, {transform:'scale(1)', filter:'brightness(1)'}], {duration:620, easing:'cubic-bezier(.2,.9,.3,1.2)'});
+  tx.animate([{clipPath:'inset(0 100% 0 0)', transform:'translateX(-14px)'}, {clipPath:'inset(0 0 0 0)', transform:'none'}], {duration:700, delay:160, easing:'cubic-bezier(.25,.8,.25,1)', fill:'backwards'});
+}
+async function clearT10Rows(){
+  const rows = [...t10rows.children];
+  if (!RM) await Promise.all(rows.map((r, i) => r.animate([{opacity:1}, {opacity:0, transform:'translateY(-18px)'}], {duration:360, delay:i * 50, fill:'forwards'}).finished));
+  t10rows.innerHTML = '';
+}
+async function top10(){
+  if (scene !== 'show') setScene('show');
+  await sponOff();
+  if (ttlIdx >= 0) await hideTitle(true);
+  t10Step++;
+  if (t10Step === 0){
+    $('t10title').textContent = TOP10.title; t10rows.innerHTML = '';
+    t10.hidden = false; requestAnimationFrame(() => t10.classList.add('on'));
+  } else if (t10Step === 6){ await clearT10Rows(); addT10Line(5); }
+  else if (t10Step <= 10){ addT10Line(t10NumAt(t10Step)); }
+  else await closeT10();
+  postState();
+}
+async function closeT10(){
+  if (t10Step < 0) return;
+  t10.classList.remove('on'); t10Step = -1;
+  await sleep(RM ? 0 : 620);
+  if (t10Step < 0){ t10.hidden = true; t10rows.innerHTML = ''; }
+}
+
+// ----- title slides: a light streak draws the rule, the letters rise in, a glint passes, then it settles to a tag -----
+const ttl = $('ttl'), ttlBig = $('ttlBig');
+let ttlIdx = -1, ttlTimer = null;
+async function showTitle(i){
+  i = +i; if (!TITLES[i]) return;
+  if (scene !== 'show') setScene('show');
+  await sponOff();
+  if (t10Step >= 0) await closeT10();
+  if (ttlIdx >= 0) await hideTitle(true);
+  ttlIdx = i; clearTimeout(ttlTimer);
+  const T = TITLES[i];
+  $('ttlKick').textContent = T.kicker;
+  ttlBig.innerHTML = ''; ttlBig.style.fontSize = '150px';
+  for (const ch of T.text){ const s = document.createElement('span'); s.textContent = ch === ' ' ? ' ' : ch; ttlBig.appendChild(s); }
+  ttl.classList.remove('tag'); ttl.hidden = false;
+  const textW = () => [...ttlBig.children].reduce((w, c) => w + c.offsetWidth, 0);   // the letters themselves, not the box
+  let size = 150; while (textW() > 1090 && size > 64){ size -= 2; ttlBig.style.fontSize = size + 'px'; }
+  postState();
+  if (RM) return;
+  const letters = [...ttlBig.children], D = 3600;
+  ttl.animate([{opacity:0}, {opacity:1}], {duration:300, fill:'backwards'});
+  $('ttlStreak').animate([{opacity:0, transform:'translateX(-300px)'}, {opacity:1, offset:.15}, {opacity:1, offset:.85}, {opacity:0, transform:'translateX(1260px)'}], {duration:900, easing:'cubic-bezier(.5,0,.3,1)'});
+  $('ttlRule').animate([{transform:'scaleX(0)'}, {transform:'scaleX(1)'}], {duration:900, easing:'cubic-bezier(.5,0,.3,1)', fill:'backwards'});
+  $('ttlKick').animate([{opacity:0, letterSpacing:'.7em'}, {opacity:1, letterSpacing:'.32em'}], {duration:900, delay:350, easing:'ease-out', fill:'backwards'});
+  const step = Math.min(45, 1500 / letters.length);
+  letters.forEach((l, k) => l.animate([
+    {opacity:0, transform:'translateY(46px) rotateX(-75deg) scale(.9)', filter:'blur(8px)'},
+    {opacity:1, transform:'translateY(-6px) rotateX(8deg) scale(1.02)', filter:'blur(0)', offset:.7},
+    {opacity:1, transform:'none', filter:'blur(0)'}], {duration:760, delay:550 + k * step, easing:'cubic-bezier(.2,.8,.3,1)', fill:'backwards'}));
+  $('ttlShine').animate([{opacity:0, transform:'translateX(-60%)'}, {opacity:1, offset:.3}, {opacity:0, transform:'translateX(60%)'}], {duration:1000, delay:D - 1100});
+  ttlTimer = setTimeout(() => { if (ttlIdx === i) ttl.classList.add('tag'); }, D + 6000);   // after a few seconds, settle into the corner
+}
+async function hideTitle(fast){
+  if (ttlIdx < 0) return;
+  ttlIdx = -1; clearTimeout(ttlTimer);
+  if (!RM) await ttl.animate([{opacity:1}, {opacity:0, transform:(ttl.classList.contains('tag') ? 'translate(0,-44px) scale(.42) ' : '') + 'translateY(-10px)'}], {duration:fast ? 260 : 600, fill:'forwards'}).finished;
+  if (ttlIdx < 0){ ttl.hidden = true; ttl.classList.remove('tag'); ttl.getAnimations().forEach(a => a.cancel()); }
+  postState();
+}
+async function goHome(){
+  if (scene !== 'show') setScene('show');
+  await Promise.all([closeT10(), hideTitle(), sponOff()]);
+  postState();
+}
+
+// ----- sponsor slides: one press per slide, a final press closes them; or a loop that holds each slide SPON_SECS -----
+const spon = $('spon'), sponGrid = $('sponGrid');
+let sponStep = -1, sponLoop = false, sponLoopT = null, sponGo = 0;
+function sponNext(){ const s = sponStep + 1; return s < SPONSORS.length ? `Sponsor slide ${s + 1} of ${SPONSORS.length}` : 'Close the sponsor slides'; }
+function sponLayout(n){   // one row for up to three logos, two rows above that
+  const rows = n <= 3 ? 1 : 2, cols = Math.ceil(n / rows), g = n <= 3 ? 64 : 34;
+  return {g, cw:Math.floor(Math.min(760, (1700 - g * (cols - 1)) / cols)), ch:Math.floor(Math.min(rows === 1 ? 470 : 262, (560 - g * (rows - 1)) / rows))};
+}
+function logoSize(L, bw, bh){   // same visual weight for wide and square logos: equal area, then fit the card
+  const a = L.w / L.h; let h = Math.sqrt(.5 * bw * bh / a), w = a * h; const k = Math.min(1, bw / w, bh / h); return [w * k, h * k];
+}
+function sponLetters(text){
+  const t = $('sponTitle'); t.innerHTML = ''; t.style.fontSize = '88px';
+  for (const ch of text){ const s = document.createElement('span'); s.textContent = ch === ' ' ? ' ' : ch; t.appendChild(s); }
+  let size = 88; while (t.scrollWidth > t.clientWidth && size > 56){ size -= 2; t.style.fontSize = size + 'px'; }
+  if (RM) return;
+  const L = [...t.children], step = Math.min(35, 900 / L.length);
+  L.forEach((l, k) => l.animate([{opacity:0, transform:'translateY(40px) rotateX(-75deg)', filter:'blur(6px)'},
+    {opacity:1, transform:'translateY(-5px) rotateX(8deg)', filter:'blur(0)', offset:.7}, {opacity:1, transform:'none', filter:'blur(0)'}],
+    {duration:700, delay:150 + k * step, easing:'cubic-bezier(.2,.8,.3,1)', fill:'backwards'}));
+}
+function sponHead(i, first){
+  const S = SPONSORS[i], same = !first && $('sponKick').textContent === S.kicker && $('sponTitle').textContent.replace(/ /g, ' ') === S.head;
+  if (same) return;
+  $('sponKick').textContent = S.kicker; sponLetters(S.head);
+  if (RM || !first) return;
+  $('sponKick').animate([{opacity:0, letterSpacing:'.7em'}, {opacity:1, letterSpacing:'.32em'}], {duration:900, easing:'ease-out', fill:'backwards'});
+  $('sponRule').animate([{transform:'scaleX(0)'}, {transform:'scaleX(1)'}], {duration:900, easing:'cubic-bezier(.5,0,.3,1)', fill:'backwards'});
+}
+function buildCards(i){
+  const S = SPONSORS[i], {g, cw, ch} = sponLayout(S.logos.length);
+  sponGrid.style.setProperty('--g', g + 'px'); sponGrid.style.setProperty('--cw', cw + 'px'); sponGrid.style.setProperty('--ch', ch + 'px');
+  sponGrid.innerHTML = '';
+  for (const key of S.logos){
+    const L = LOGOS[key]; if (!L) continue;
+    const c = document.createElement('div'); c.className = 'scard';
+    const img = new Image(); img.src = L.src; img.alt = L.alt;
+    const [w, h] = logoSize(L, cw * .82, (ch - 6) * .74), t = LOGO_TRIM[key] || 1;
+    img.style.width = Math.round(w * t) + 'px'; img.style.height = Math.round(h * t) + 'px';
+    const gl = document.createElement('div'); gl.className = 'gl';
+    c.append(img, gl); sponGrid.appendChild(c);
+  }
+}
+function glint(delay){ [...sponGrid.children].forEach((c, k) => c.lastChild.animate([{transform:'translateX(-120%)'}, {transform:'translateX(120%)'}], {duration:1100, delay:delay + k * 110, easing:'ease-in-out'})); }
+async function cardsIn(go){
+  if (RM) return;
+  const cards = [...sponGrid.children];
+  await Promise.all(cards.map((c, k) => c.animate([
+    {opacity:0, transform:'translateY(70px) scale(.9) rotateX(30deg)'},
+    {opacity:1, transform:'translateY(-8px) scale(1.015) rotateX(-3deg)', offset:.65},
+    {opacity:1, transform:'none'}], {duration:820, delay:350 + k * 120, easing:'cubic-bezier(.2,.8,.3,1)', fill:'backwards'}).finished.catch(() => {})));
+  if (go === sponGo) glint(0);
+}
+async function cardsOut(){
+  const cards = [...sponGrid.children];
+  cards.forEach(c => c.getAnimations().forEach(a => a.finish()));
+  if (RM) return;
+  await Promise.all(cards.map((c, k) => c.animate([{opacity:1, transform:'none'}, {opacity:0, transform:'translateY(-34px) scale(.94)'}],
+    {duration:380, delay:k * 45, easing:'cubic-bezier(.5,0,.8,.4)', fill:'forwards'}).finished.catch(() => {})));
+}
+async function showSponsors(i){
+  const go = ++sponGo;
+  if (sponStep < 0){
+    if (scene === 'show'){ closeT10(); hideTitle(true); }
+    sponStep = i; spon.hidden = false; sponHead(i, true); buildCards(i);
+    requestAnimationFrame(() => spon.classList.add('on'));
+  } else {
+    sponStep = i; postState();
+    await cardsOut(); if (go !== sponGo) return;
+    sponHead(i, false); buildCards(i);
+  }
+  postState();
+  cardsIn(go);
+}
+async function closeSponsors(){
+  if (sponStep < 0) return;
+  sponStep = -1; ++sponGo; spon.classList.remove('on'); postState();
+  await sleep(RM ? 0 : 650);
+  if (sponStep < 0){ spon.hidden = true; sponGrid.innerHTML = ''; }
+  pump();
+}
+function stopSponLoop(){ clearTimeout(sponLoopT); if (sponLoop){ sponLoop = false; $('bSLoop').setAttribute('aria-pressed', false); postState(); } }
+async function sponOff(){ stopSponLoop(); await closeSponsors(); }
+function sponsorsNext(){ stopSponLoop(); const s = sponStep + 1; s < SPONSORS.length ? showSponsors(s) : closeSponsors(); }
+function toggleSponLoop(){
+  if (sponLoop){ sponOff(); return; }   // turning the loop off closes the slides
+  sponLoop = true; $('bSLoop').setAttribute('aria-pressed', true);
+  const tick = () => { if (!sponLoop) return; showSponsors((sponStep + 1) % SPONSORS.length); sponLoopT = setTimeout(tick, SPON_SECS * 1000); };
+  if (sponStep < 0) tick(); else sponLoopT = setTimeout(tick, SPON_SECS * 1000);
+  postState();
+}
+setInterval(() => { if (sponStep >= 0 && !RM && !sponGrid.getAnimations({subtree:true}).length) glint(0); }, 9000);   // a slow glint while a slide holds
+
+// ----- beat sync: the board pulses with the music. It listens to the default audio input (the computer's microphone, or a
+// line from the sound board if that's set as the input), catches each kick drum in the 40-150 Hz band, and learns the
+// tempo so it keeps time through a bar where the kick drops out. With no audio input it falls back to a steady 124 BPM pulse.
+const BEAT = {mode:'off', userOff:false, ctx:null, an:null, stream:null, f:null, lo:1, hi:4, hist:[], prevE:0, last:0, lastPulse:0,
+  next:0, iois:[], bpm:0, shownBpm:0, misses:0, env:0, at:0, pulses:0, onsets:0, err:''};
+async function beatStart(){
+  if (BEAT.mode === 'listen' || BEAT.mode === 'starting') return;
+  BEAT.mode = 'starting'; beatUI();
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('no input');
+    const stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
+    if (BEAT.mode !== 'starting'){ stream.getTracks().forEach(t => t.stop()); return; }   // switched off while the prompt was up
+    const ctx = new (window.AudioContext || window.webkitAudioContext)(), an = ctx.createAnalyser();
+    an.fftSize = 2048; an.smoothingTimeConstant = 0;
+    ctx.createMediaStreamSource(stream).connect(an);
+    const hz = ctx.sampleRate / an.fftSize;
+    Object.assign(BEAT, {ctx, an, stream, f:new Float32Array(an.frequencyBinCount), lo:Math.max(1, Math.round(40 / hz)), hi:Math.round(150 / hz),
+      hist:[], iois:[], bpm:0, last:0, next:0, mode:'listen', err:''});
+    ctx.resume().catch(() => {});
+  } catch (e){ BEAT.mode = 'steady'; BEAT.err = e && e.name === 'NotAllowedError' ? 'microphone blocked' : 'no audio input'; }
+  beatUI();
+}
+function beatStop(){
+  if (BEAT.stream) BEAT.stream.getTracks().forEach(t => t.stop());
+  if (BEAT.ctx) BEAT.ctx.close().catch(() => {});
+  Object.assign(BEAT, {mode:'off', ctx:null, an:null, stream:null, bpm:0, iois:[], hist:[], env:0});
+  beatUI();
+}
+function beatUI(){ stage.classList.toggle('beat', BEAT.mode === 'steady'); $('bBeat').setAttribute('aria-pressed', BEAT.mode !== 'off'); postState(); }
+function beatLabel(){
+  if (BEAT.mode === 'listen') return BEAT.ctx && BEAT.ctx.state === 'suspended' ? 'click the show window once to start'
+    : 'listening' + (BEAT.bpm ? ' · ' + Math.round(BEAT.bpm) + ' BPM' : '');
+  return BEAT.mode === 'steady' ? 'steady pulse (' + BEAT.err + ')' : BEAT.mode === 'starting' ? 'starting…' : 'off';
+}
+function pulse(k){
+  BEAT.env = k; BEAT.at = BEAT.lastPulse = performance.now(); BEAT.pulses++;
+  if (RM || scene !== 'rave') return;
+  const flash = [{filter:`brightness(${1 + .3 * k})`}, {filter:'brightness(1)'}], o = {duration:280, easing:'ease-out'};
+  grid.animate(flash, o); board.animate(flash, o); $('top').animate(flash, o); $('band').animate(flash, o);
+}
+function beatEnv(now){   // 0-1: how hard the lasers and floor flare right now
+  if (BEAT.mode === 'steady') return Math.max(0, 1 - ((now / 483.9) % 1) * 2.4);
+  return BEAT.env ? Math.max(0, BEAT.env * (1 - (now - BEAT.at) / 220)) : 0;
+}
+function beatTick(now){
+  requestAnimationFrame(beatTick);
+  const B = BEAT;
+  if (B.mode !== 'listen' || !B.an || scene !== 'rave' || B.ctx.state !== 'running') return;
+  B.an.getFloatFrequencyData(B.f);
+  let e = 0; for (let i = B.lo; i <= B.hi; i++) e += Math.pow(10, B.f[i] / 20);
+  const h = B.hist, avg = h.length ? h.reduce((a, b) => a + b, 0) / h.length : e;
+  h.push(e); if (h.length > 43) h.shift();   // about the last 0.7 seconds
+  const rising = e > B.prevE; B.prevE = e;
+  const T = B.bpm ? 60000 / B.bpm : 0;
+  if (h.length > 20 && rising && e > avg * 1.35 && e > 2e-3 && now - B.last > (T ? T * .6 : 270)){   // a kick
+    const ioi = now - B.last; B.last = now; B.onsets++;
+    if (ioi > 270 && ioi < 1100){ B.iois.push(ioi); if (B.iois.length > 12) B.iois.shift(); }
+    if (B.iois.length >= 4){   // tempo: the average gap between kicks near the median (frames round each gap), folded into 79-182 BPM
+      const s = B.iois.slice().sort((a, b) => a - b), med = s[s.length >> 1], near = s.filter(v => Math.abs(v - med) < med * .12);
+      let m = near.reduce((a, b) => a + b, 0) / near.length;
+      while (m < 330) m *= 2; while (m > 760) m /= 2;
+      B.bpm = 60000 / m;
+    }
+    B.next = B.bpm ? now + 60000 / B.bpm : 0; B.misses = 0;
+    if (now - B.lastPulse > (T ? T * .5 : 200)) pulse(1);   // the keep-time pulse may have just fired for this beat
+  } else if (T && B.next && now > B.next + 60 && B.misses < 4){   // a kick didn't register: keep time for up to four beats
+    B.misses++; B.next += T; pulse(.65);
+  }
+  if (B.bpm && now - B.last > 8000){ B.bpm = 0; B.iois = []; }   // the music stopped: learn the next song's tempo fresh
+  if (Math.round(B.bpm) !== B.shownBpm){ B.shownBpm = Math.round(B.bpm); postState(); }
+}
+requestAnimationFrame(beatTick);
+// browsers start audio only after a click or key press in the window: pick it up on the first one
+['pointerdown', 'keydown'].forEach(t => addEventListener(t, () => { if (BEAT.ctx && BEAT.ctx.state === 'suspended') BEAT.ctx.resume().then(postState, () => {}); }));
+
+function setScene(s){
+  if (sponStep >= 0) sponOff();
+  scene = s;
+  stage.classList.toggle('show-mode', s === 'show'); document.body.classList.toggle('show-mode', s === 'show');
+  $('bShow').setAttribute('aria-pressed', s === 'show'); $('bRave').setAttribute('aria-pressed', s === 'rave');
+  if (s === 'show' && !RM) setTimeout(() => launch('plane'), rand(6, 12) * 1000);   // something crosses soon after it appears
+  if (s === 'rave' && BEAT.mode === 'off' && !BEAT.userOff && navigator.permissions)
+    navigator.permissions.query({name:'microphone'}).then(q => { if (q.state === 'granted' && scene === 'rave' && BEAT.mode === 'off') beatStart(); }).catch(() => {});
+  if (s === 'rave'){ closeT10(); hideTitle(true); if (lastCounts) setTimeout(sweepHeader, RM ? 0 : 900); slots.forEach(sl => { if (sl.race && !sl.busy) paint(sl, false); }); pump(); }
+  postState();
+}
+
+// ----- control window: a separate window for the booth's laptop screen while this one is full screen on the projector -----
+let ctlWin = null;
+function postState(){
+  if (!ctlWin || ctlWin.closed) return;
+  try { ctlWin.postMessage({cr:'state', scene, t10Step, next:t10Next(), title:ttlIdx >= 0 ? TITLES[ttlIdx].text : '', mode:MODE,
+    spon:sponStep, sponNext:sponNext(), loop:sponLoop, sponN:SPONSORS.length, active:activeCue(), beat:beatLabel(), beatOn:BEAT.mode !== 'off'}, '*'); } catch (e) {}
+}
+// which run-of-show cue is on screen right now (-1: none)
+function activeCue(){ return CUES.findIndex(c => c.sponsor != null ? c.sponsor === sponStep : c.title != null ? c.title === ttlIdx : !!c.top10 && t10Step >= 0); }
+addEventListener('message', e => {
+  const d = e.data;
+  if (!d || d.cr !== 'cmd' || !ctlWin || e.source !== ctlWin || !act[d.a]) return;
+  act[d.a](d.arg);
+});
+function openControls(){
+  const w = window.open('', 'cheeseRaveControls', 'width=480,height=860');
+  if (!w){ showCtl(); return; }   // pop-ups blocked: the on-screen buttons still work
+  ctlWin = w;
+  const cueBtns = CUES.map((c, i) => `<button id="cue${i}" data-a="cue" data-arg="${i}"${c.top10 ? ' class="t10"' : ''}><b>${i + 1}</b>${cueName(c).replace(/[<&]/g, '')}${c.top10 ? '<small id="next"></small>' : ''}</button>`).join('');
+  w.document.open();
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Cheese Rave controls</title><style>
+    :root{color-scheme:dark}body{margin:0;padding:18px;background:#040f11;color:#effffc;font:15px system-ui,-apple-system,sans-serif}
+    h1{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:#ffd62e;margin:0 0 4px}
+    #st{font:12px ui-monospace,Menlo,monospace;color:#5f8f92;margin-bottom:14px}
+    h2{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#5f8f92;margin:18px 0 8px}
+    .g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    button{font:600 15px system-ui,sans-serif;color:#effffc;background:#0a2a2f;border:1px solid #1f5156;border-radius:8px;padding:14px 12px;cursor:pointer;text-align:left}
+    button:hover{border-color:#3ad6d2}button:focus-visible{outline:2px solid #ff6fb5;outline-offset:2px}
+    button b{color:#ffd62e;margin-right:8px}.wide{grid-column:1/-1}
+    .t10{background:#3a3000;border-color:#ffd62e}
+    button small{display:block;font:12px ui-monospace,Menlo,monospace;color:#c6f3ed;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .on{background:#3ad6d2;color:#03181b;border-color:#3ad6d2}.on small{color:#03181b}.on b{color:#03181b}
+    p{font-size:12px;color:#5f8f92;line-height:1.5}
+  </style></head><body>
+    <h1>Cheese Rave controls</h1><div id="st">Connecting…</div>
+    <div class="g"><button id="home" class="wide" data-a="show"><b>H</b>Home screen</button></div>
+    <h2>Run of show</h2><div class="g">${cueBtns}</div>
+    <div class="g" style="margin-top:8px"><button id="sloop" class="wide" data-a="sponloop"><b>L</b>Sponsor loop: slides 1–3, ${SPON_SECS} seconds each</button></div>
+    <h2>In the sky</h2><div class="g"><button data-a="plane"><b>P</b>Airplane</button><button data-a="iss"><b>I</b>ISS</button></div>
+    <h2>Cheese Rave</h2><div class="g"><button id="rave" class="wide" data-a="rave"><b>R</b>Rave board</button>
+    <button data-a="board"><b>C</b>Congress board</button><button data-a="flip"><b>F</b>Flip a tile</button>
+    <button id="beatb" data-a="beat"><b>B</b>Beat sync<small id="beatl">off</small></button><button data-a="demo"><b>D</b>Demo speed</button></div>
+    <p>Keep the show window full screen on the projector. These buttons work from here; the same keys work in the show window. Number keys follow the run of show; T and S still step the Top 10 and the sponsor slides.</p>
+    <script>
+      const send = (a, arg) => { if (window.opener) window.opener.postMessage({cr:'cmd', a, arg}, '*'); };
+      document.addEventListener('click', e => { const b = e.target.closest('button'); if (b) send(b.dataset.a, b.dataset.arg); });
+      addEventListener('keydown', e => { const k = e.key.toLowerCase(); const m = {h:'show', t:'top10', ' ':'top10', arrowright:'top10', s:'sponsors', l:'sponloop', p:'plane', i:'iss', r:'rave', c:'board', f:'flip', b:'beat', d:'demo'}[k];
+        if (m){ e.preventDefault(); send(m); } else if (/^[1-9]$/.test(k)) send('cue', +k - 1); });
+      addEventListener('message', e => { const d = e.data; if (!d || d.cr !== 'state') return;
+        document.getElementById('st').textContent = (d.scene === 'show' ? 'Showing: home screen' : 'Showing: rave board') + (d.title ? ' · title: ' + d.title : '') + (d.t10Step >= 0 ? ' · Top 10 open' : '')
+          + (d.spon >= 0 ? ' · sponsor slide ' + (d.spon + 1) + ' of ' + d.sponN : '') + (d.loop ? ' (looping)' : '') + (d.mode !== 'live' ? ' · ' + d.mode.toUpperCase() + ' MODE' : '');
+        const nx = document.getElementById('next'); if (nx) nx.textContent = 'Next: ' + d.next;
+        document.querySelectorAll('[id^=cue]').forEach(b => b.classList.toggle('on', b.id === 'cue' + d.active));
+        document.getElementById('sloop').classList.toggle('on', d.loop);
+        document.getElementById('beatl').textContent = d.beat; document.getElementById('beatb').classList.toggle('on', d.beatOn);
+        document.getElementById('home').classList.toggle('on', d.scene === 'show' && d.t10Step < 0 && !d.title && d.spon < 0);
+        document.getElementById('rave').classList.toggle('on', d.scene === 'rave'); });
+    <\/script></body></html>`);
+  w.document.close();
+  setTimeout(postState, 200);
+}
+// sponsor slides work over the board too; titles and the Top 10 belong to the home screen
+document.getElementById('cueBtns').innerHTML = CUES.map((c, i) => `<button${c.sponsor != null ? '' : ' class="sh"'} data-a="cue" data-arg="${i}">${cueName(c).replace(/[<&]/g, '')}<kbd>${i + 1}</kbd></button>`).join('');
+
+// ----- timers -----
+let simT, boardT, callT;
+function startTimers(first){
+  clearInterval(simT); clearTimeout(boardT); clearTimeout(callT);
+  const t = T();
+  if (!LIVE){
+    simT = setInterval(simTick, t.sim);
+    const loopCall = d => { callT = setTimeout(() => { demoCall(); loopCall(t.callEvery); }, d); };
+    loopCall(first ? t.firstCall : t.callEvery);
+  }
+  const loopBoard = d => { boardT = setTimeout(() => { showBoard(); loopBoard(t.every); }, d); };
+  loopBoard(first ? t.first : t.every);
+  slots.forEach(s => { if (!s.busy) schedule(s); });
+}
+
+// ----- clock, marquee, scaling -----
+function clock(){ $('clock').textContent = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}).replace(/\s?[AP]M/, ''); }
+const m = 'THE ELECTION NIGHT SHOW AND CHEESE RAVE   ·   TOWER THEATRE   ·   OKLAHOMA CITY   ·   PRESENTED BY LET’S FIX THIS   ·   RESULTS VIA CIVICAPI.ORG   ·   ';
+$('marq').textContent = m.repeat(4);
+function fitStage(){
+  const f = $('fit'); const s = Math.min(f.clientWidth/1920, f.clientHeight/1080);
+  stage.style.setProperty('--s', s);
+}
+addEventListener('resize', fitStage);
+
+// ----- operator controls -----
+const ctl = $('ctl'); let ctlT;
+function showCtl(){ ctl.classList.add('on'); clearTimeout(ctlT); ctlT = setTimeout(() => ctl.classList.remove('on'), 4000); }
+addEventListener('pointermove', showCtl); addEventListener('pointerdown', showCtl);
+$('bCall').hidden = LIVE;   // live calls come from the feed
+const act = {
+  flip(){ const free = slots.filter(s => !s.busy && !s.pin); if (free.length) swapSlot(free[Math.random()*free.length|0]); },
+  call(){ if (!LIVE) demoCall(); },
+  board(){ showBoard(); },
+  show(){ goHome(); },
+  rave(){ setScene('rave'); },
+  plane(){ launch('plane'); },
+  iss(){ launch('iss'); },
+  top10(){ top10(); },
+  title(i){ showTitle(i); },
+  sponsors(){ sponsorsNext(); },
+  cue(i){ const c = CUES[+i]; if (!c) return;
+    if (c.sponsor != null){ stopSponLoop(); if (sponStep !== c.sponsor) showSponsors(c.sponsor); }
+    else if (c.title != null) showTitle(c.title);
+    else if (c.top10) top10(); },
+  sponloop(){ toggleSponLoop(); },
+  ctlwin(){ openControls(); },
+  demo(){ CFG.demo = !CFG.demo; $('bDemo').setAttribute('aria-pressed', CFG.demo); $('demoChip').hidden = !CFG.demo; startTimers(false); },
+  beat(){ if (BEAT.mode === 'off'){ BEAT.userOff = false; beatStart(); } else { BEAT.userOff = true; beatStop(); } },
+  fs(){ const d = document.documentElement; try { (document.fullscreenElement ? document.exitFullscreen() : d.requestFullscreen()).catch(() => {}); } catch(e){} }
+};
+ctl.addEventListener('click', e => { const b = e.target.closest('button'); if (b && act[b.dataset.a]) act[b.dataset.a](b.dataset.arg); });
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const key = e.key.toLowerCase();
+  const k = {f:'flip', k:'call', c:'board', d:'demo', b:'beat', h:'show', s:'sponsors', l:'sponloop', r:'rave', p:'plane', i:'iss', t:'top10', ' ':'top10', arrowright:'top10', w:'ctlwin'}[key];
+  if (k){ e.preventDefault(); act[k](); }
+  else if (/^[1-9]$/.test(key) && CUES[+key - 1]){ e.preventDefault(); act.cue(+key - 1); }
+});
+
+// Read-only peek at a race's state, for testing and for cueing from the browser console.
+window.cheeseBoard = {act: (a, arg) => act[a] && act[a](arg), seats: () => ({ours:tally(), civicapi:CIV_SEATS, listed:{S:NAT.S.size, H:NAT.H.size}}),
+  beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
+
+// ----- boot -----
+fitStage(); clock(); setInterval(clock, 10000);
+if (!LIVE) simInit();
+resolvePins();
+slots.forEach(s => setRace(s, s.pin || pickRace()));
+// Refit names once the web fonts arrive (they're narrower than the fallbacks).
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => slots.forEach(s => { if (s.race && !s.busy){ fitSlot(s); fitLabel(s); } }));
+$('bDemo').setAttribute('aria-pressed', CFG.demo); $('demoChip').hidden = !CFG.demo;
+setStatus(); updateCounts(); setScene(scene);
+startTimers(true);
+if (LIVE) poll();
+showCtl(); clearTimeout(ctlT); ctlT = setTimeout(() => ctl.classList.remove('on'), 7000);
+})();
+</script>

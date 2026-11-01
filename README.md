@@ -38,3 +38,13 @@ Live results come from [civicAPI](https://civicapi.org) and refresh every minute
 
 - Add `#rehearse` to the address to replay the Aug. 25, 2026 runoff results.
 - Add `#sample` for invented numbers (demos only).
+
+## Updating the page
+
+The page is built from `src/`. Edit `src/board.src.html` (show content such as the Top 10, titles and sponsors is near the top of its script), then:
+
+```
+cd src && python3 build_pages.py && cp cheese-rave-block-live.html ../index.html
+```
+
+and push. GitHub Pages republishes in about a minute. `cheese-rave-block.html` is the same page with invented numbers, for previews.
