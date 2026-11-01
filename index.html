@@ -190,6 +190,19 @@ html:fullscreen body{padding-left:0;padding-right:0}   /* full screen: the slide
   background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,246,200,.95));box-shadow:0 0 18px 4px rgba(255,230,150,.55)}
 #ttl .shine{position:absolute;inset:0;pointer-events:none;opacity:0;
   background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);mix-blend-mode:overlay}
+/* phone pushes: four tiles flip away and a panel flips in with the photo or clip, square and tinted to the board's colors */
+.mpanel{position:absolute;z-index:3;border-radius:10px;overflow:hidden;display:grid;grid-template-columns:auto 1fr;align-items:stretch;
+  background:var(--mbg);color:var(--white);transform-origin:50% 50%;box-shadow:0 30px 90px rgba(0,0,0,.5)}
+.mpanel.t{--mbg:#0C4E56;--macc:#27C6C4} .mpanel.p{--mbg:#6a1f48;--macc:#FF5AA8}
+.mpanel .mbox{position:relative;margin:14px;aspect-ratio:1;overflow:hidden;border-radius:6px;background:#000}
+.mpanel .mbox img,.mpanel .mbox video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.mpanel.t .mbox img,.mpanel.t .mbox video{filter:url(#duoT)} .mpanel.p .mbox img,.mpanel.p .mbox video{filter:url(#duoP)}
+.mpanel .mbox::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 3px var(--macc);border-radius:6px;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0 2px,transparent 2px 4px)}
+.mpanel .mtxt{display:grid;align-content:center;gap:12px;padding:20px 26px 20px 8px;min-width:0}
+.mpanel .mpk{font:600 15px var(--mono);letter-spacing:.2em;color:var(--gold)}
+.mpanel .mpn{font:900 64px/.95 var(--display);text-transform:uppercase;letter-spacing:.01em;overflow-wrap:anywhere;max-height:3em;overflow:hidden}
+.mpanel .mpt{font:500 14px var(--mono);letter-spacing:.16em;color:var(--macc)}
 /* sponsor slides: logos on white cards over a dimmed screen. They sit above both the home screen and the board,
    and keep clear of the bottom of the screen, where the band and DJ stand during the rave. */
 #spon{position:absolute;inset:0;z-index:15;pointer-events:none;opacity:0;transition:opacity .6s ease}
@@ -319,6 +332,14 @@ body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
       <section id="t10" hidden aria-label="Top 10 list"><div class="t10h"><b>TOP 10</b><span id="t10title"></span></div><div id="t10rows"></div></section>
       <div id="ttl" hidden><div class="kick" id="ttlKick"></div><div class="big" id="ttlBig"></div><div class="rule" id="ttlRule"></div><div class="streak" id="ttlStreak"></div><div class="shine" id="ttlShine"></div></div>
     </div>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <filter id="duoT" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values=".299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 0 0 0 1 0"/>
+        <feComponentTransfer><feFuncR type="linear" slope="1.2" intercept="-.08"/><feFuncG type="linear" slope="1.2" intercept="-.08"/><feFuncB type="linear" slope="1.2" intercept="-.08"/></feComponentTransfer>
+        <feComponentTransfer><feFuncR type="table" tableValues=".016 .153 .918"/><feFuncG type="table" tableValues=".145 .776 1"/><feFuncB type="table" tableValues=".165 .769 .984"/></feComponentTransfer></filter>
+      <filter id="duoP" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values=".299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 0 0 0 1 0"/>
+        <feComponentTransfer><feFuncR type="linear" slope="1.2" intercept="-.08"/><feFuncG type="linear" slope="1.2" intercept="-.08"/><feFuncB type="linear" slope="1.2" intercept="-.08"/></feComponentTransfer>
+        <feComponentTransfer><feFuncR type="table" tableValues=".165 1 1"/><feFuncG type="table" tableValues=".027 .353 .918"/><feFuncB type="table" tableValues=".086 .659 .957"/></feComponentTransfer></filter>
+    </svg>
     <section id="spon" hidden aria-label="Our sponsors">
       <div id="sponHead"><div id="sponKick"></div><div id="sponTitle"></div><div id="sponRule"></div></div>
       <div id="sponGrid"></div>
@@ -337,6 +358,8 @@ body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
   <button id="bSLoop" data-a="sponloop" aria-pressed="false">Sponsor loop<kbd>L</kbd></button>
   <button id="bRave" data-a="rave">Rave board<kbd>R</kbd></button>
   <button id="bSrc" class="rv" data-a="source" aria-pressed="false">Backup results<kbd>E</kbd></button>
+  <button id="bPush" class="rv" data-a="pushes" aria-pressed="true">Phone pushes<kbd>M</kbd></button>
+  <button class="rv" data-a="skipmedia">Skip push<kbd>X</kbd></button>
   <button id="bPlane" class="sh" data-a="plane">Airplane<kbd>P</kbd></button>
   <button id="bIss" class="sh" data-a="iss">ISS<kbd>I</kbd></button>
   <button data-a="ctlwin">Control window<kbd>W</kbd></button>
@@ -909,7 +932,7 @@ async function swapSlot(s){
 }
 // After the Oklahoma list is rebuilt from the live feed, every tile flips to the new set.
 async function reflipAll(){
-  while (boardOn || calling) await sleep(200);
+  while (boardOn || calling || mediaOn) await sleep(200);
   slots.forEach(s => { s.busy = true; s.race = null; });
   await Promise.all(slots.map((s, i) => flipOut(s.el, ((i%5) + Math.floor(i/5)) * 60)));
   slots.forEach(s => setRace(s, s.pin || pickRace() || RACES[0]));
@@ -930,7 +953,7 @@ function callRace(r, idx, animate, kind){
   else slots.forEach(s => { if (s.race === r && !s.busy) paint(s, false); });
 }
 async function pump(){
-  if (calling || boardOn || sponStep >= 0 || !queue.length) return;   // calls wait while the sponsor slides are up
+  if (calling || boardOn || sponStep >= 0 || mediaOn || !queue.length) return;   // calls wait while sponsor slides or a phone push is up
   calling = true; const r = queue.shift(); nowCalling = r;
   try { await playCall(r); } finally { calling = false; nowCalling = null; }
   pump();
@@ -984,7 +1007,7 @@ async function playCall(r){
 let boardOn = false;
 async function showBoard(){
   if (boardOn || scene === 'show') return;
-  if (calling || queue.length || sponStep >= 0){ setTimeout(showBoard, 3000); return; }
+  if (calling || queue.length || sponStep >= 0 || mediaOn){ setTimeout(showBoard, 3000); return; }
   boardOn = true;
   while (slots.some(s => s.busy)) await sleep(80);
   const {s, h} = tally();
@@ -1009,6 +1032,135 @@ async function showBoard(){
   slots.forEach(sl => { if (sl.race) paint(sl, false); });
   pump();
 }
+
+// ----- phone pushes: photos and short clips sent from the "Push to screen" page (push.html) -----
+// The phone uploads to a private topic on ntfy.sh, a free public relay; the board listens to the same topic. The topic
+// code is never in this file: the booth opens the board with ?push=CODE (remembered after that). On the rave board, four
+// unpinned tiles in a 2x2 block flip away and a panel flips in with the photo or clip, cropped square and tinted to the
+// board's turquoise or pink. Calls and the Congress board go first; pushes wait their turn, and anything sent during
+// the show waits for the rave board. X skips what's showing, M pauses (and resumes) pushes.
+const PUSH_RELAY = 'https://ntfy.sh/';
+const PUSH_CODE = (() => { const q = new URLSearchParams(location.search).get('push');
+  try { if (q) localStorage.setItem('crPush', q); return q || localStorage.getItem('crPush') || ''; } catch (e) { return q || ''; } })();
+const MEDIA_SECS = Math.max(2, +new URLSearchParams(location.search).get('mediasecs') || 12);   // how long a photo holds
+const CLIP_MAX = 30;   // seconds: a longer clip is cut off here
+const MEDIA = {queue:[], seen:new Set(), paused:false, connected:false, shown:0, lastId:'', es:null, skip:null, now:null, tone:0};
+const PUSH_KEEP_MIN = 150;   // pushes older than this are stale (the relay deletes files after 3 hours)
+// What this board has already shown (or dropped), kept across reloads so a reload replays only what's still waiting.
+const pushDone = (() => { try { return new Set(JSON.parse(localStorage.getItem('crPushDone') || '[]')); } catch (e) { return new Set(); } })();
+function markDone(id){ pushDone.add(id); try { localStorage.setItem('crPushDone', JSON.stringify([...pushDone].slice(-300))); } catch (e) {} }
+let mediaOn = false;
+const BLOCKS = [[1, 0], [2, 0], [1, 1], [2, 1]];   // [column, row] of a 2x2 block's top left; columns 0 and 4 hold the pinned races
+function pushListen(){
+  if (!PUSH_CODE || !window.EventSource) return;
+  // first connection: everything from the last PUSH_KEEP_MIN minutes; after a drop: everything since the last message
+  const url = PUSH_RELAY + encodeURIComponent('cheeserave-' + PUSH_CODE) + '/sse?since=' + encodeURIComponent(MEDIA.lastId || PUSH_KEEP_MIN + 'm');
+  const es = MEDIA.es = new EventSource(url);
+  es.onopen = () => { MEDIA.connected = true; postState(); };
+  es.onmessage = e => {
+    let m; try { m = JSON.parse(e.data); } catch (err) { return; }
+    if (!m || m.event !== 'message' || !m.id) return;
+    MEDIA.lastId = m.id;
+    const a = m.attachment;
+    if (MEDIA.seen.has(m.id) || pushDone.has(m.id) || !a || typeof a.url !== 'string' || !/^(image|video)\//.test(a.type || '')) return;
+    MEDIA.seen.add(m.id);
+    MEDIA.queue.push({id:m.id, url:a.url, video:/^video\//.test(a.type), name:String(m.title || '').trim().slice(0, 40), at:m.time ? m.time * 1000 : Date.now()});
+    while (MEDIA.queue.length > 15) markDone(MEDIA.queue.shift().id);   // a flood keeps only the newest 15
+    postState(); mediaPump();
+  };
+  es.onerror = () => {   // reconnect, picking up anything sent while the line was down
+    MEDIA.connected = false; postState(); es.close();
+    setTimeout(pushListen, 4000);
+  };
+}
+function mediaReady(){ return scene === 'rave' && !MEDIA.paused && !mediaOn && !boardOn && !calling && !queue.length && sponStep < 0; }
+let mediaWait = null;
+function mediaPump(){
+  clearTimeout(mediaWait);
+  MEDIA.queue = MEDIA.queue.filter(x => Date.now() - x.at < PUSH_KEEP_MIN * 60000 || (markDone(x.id), false));   // stale: drop it
+  if (!MEDIA.queue.length) return;
+  if (!mediaReady()){ mediaWait = setTimeout(mediaPump, 2000); return; }
+  const item = MEDIA.queue.shift(); markDone(item.id);
+  showMedia(item).finally(() => { postState(); pump(); mediaWait = setTimeout(mediaPump, 1500); });
+}
+function loadMedia(item){   // resolves with a ready element, or null if it won't load in 12 seconds
+  return new Promise(res => {
+    const done = el => { clearTimeout(to); res(el); };
+    const to = setTimeout(() => done(null), 12000);
+    if (item.video){
+      const v = document.createElement('video');
+      Object.assign(v, {muted:true, playsInline:true, preload:'auto', src:item.url}); v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+      v.addEventListener('loadeddata', () => done(v), {once:true}); v.addEventListener('error', () => done(null), {once:true});
+    } else {
+      const im = new Image(); im.decoding = 'async'; im.src = item.url;
+      im.decode().then(() => done(im), () => done(null));
+    }
+  });
+}
+async function showMedia(item){
+  mediaOn = true; postState();
+  try {
+    const el = await loadMedia(item);
+    if (!el || scene !== 'rave' || MEDIA.paused){ return; }
+    // a 2x2 block whose tiles are free (wait a moment for a flip in progress)
+    let blk = null;
+    for (let tries = 0; tries < 30 && !blk; tries++){
+      const free = BLOCKS.map(([c, r]) => [r * 5 + c, r * 5 + c + 1, (r + 1) * 5 + c, (r + 1) * 5 + c + 1].map(i => slots[i]))
+        .filter(b => b.every(s => !s.busy));
+      blk = free.length ? free[Math.random() * free.length | 0] : null;
+      if (!blk) await sleep(150);
+    }
+    if (!blk) return;
+    blk.forEach(s => { s.busy = true; clearTimeout(s.timer); });
+    while (blk.some(s => s.el.getAnimations().some(a => !(a instanceof CSSAnimation)))) await sleep(60);
+    const a = stageBox(blk[0].el), z = stageBox(blk[3].el);
+    const tone = MEDIA.tone++ % 2 ? 'p' : 't';
+    const panel = document.createElement('div');
+    panel.className = 'mpanel ' + tone;
+    Object.assign(panel.style, {left:a.x + 'px', top:a.y + 'px', width:(z.x + z.w - a.x) + 'px', height:(z.y + z.h - a.y) + 'px'});
+    panel.innerHTML = '<div class="mbox"></div><div class="mtxt"><div class="mpk">SENT IN BY</div><div class="mpn"></div><div class="mpt"></div></div>';
+    panel.querySelector('.mbox').style.width = (z.y + z.h - a.y - 28) + 'px';
+    panel.querySelector('.mbox').appendChild(el);
+    panel.querySelector('.mpn').textContent = item.name || 'THE CROWD';
+    panel.querySelector('.mpt').textContent = (item.video ? 'VIDEO' : 'PHOTO') + ' · ' + hhmm(new Date(item.at));
+    // tiles flip away in a cascade, then the panel flips in
+    await Promise.all(blk.map((s, k) => flipOut(s.el, [0, 90, 90, 180][k])));
+    blk.forEach(s => { s.el.style.visibility = 'hidden'; });
+    panel.style.transform = 'perspective(1600px) rotateX(-90deg)';
+    stage.appendChild(panel);
+    MEDIA.now = item; MEDIA.shown++; postState();
+    if (!RM) await panel.animate([{transform:'perspective(1600px) rotateX(-90deg)'}, {transform:'perspective(1600px) rotateX(8deg)', offset:.72}, {transform:'perspective(1600px) rotateX(0deg)'}],
+      {duration:620, easing:'ease-out'}).finished;
+    panel.style.transform = '';
+    $('flash').style.background = tone === 'p' ? '#FF5AA8' : '#27C6C4';
+    if (!RM) $('flash').animate([{opacity:.22}, {opacity:0}], {duration:900, easing:'ease-out'});
+    // hold: a photo for MEDIA_SECS, a clip until it ends (or CLIP_MAX); X ends it early
+    await new Promise(res => {
+      MEDIA.skip = res;
+      if (el.tagName === 'VIDEO'){
+        el.currentTime = 0; el.play().catch(() => res());
+        el.addEventListener('ended', res, {once:true}); el.addEventListener('error', res, {once:true});
+        setTimeout(res, CLIP_MAX * 1000);
+      } else setTimeout(res, MEDIA_SECS * 1000);
+    });
+    MEDIA.skip = null; MEDIA.now = null;
+    if (!RM) await panel.animate([{transform:'perspective(1600px) rotateX(0deg)'}, {transform:'perspective(1600px) rotateX(90deg)'}], {duration:300, easing:'ease-in', fill:'forwards'}).finished;
+    if (el.tagName === 'VIDEO'){ el.pause(); el.removeAttribute('src'); el.load(); }
+    panel.remove();
+    for (const [k, s] of blk.entries()){
+      s.el.style.transform = 'rotateX(90deg)'; s.el.style.visibility = '';
+      setRace(s, s.pin || pickRace() || s.race);
+      flipIn(s.el, [0, 90, 90, 180][k]).then(() => { s.busy = false; schedule(s); });
+    }
+    await sleep(RM ? 0 : 560);
+  } finally { mediaOn = false; MEDIA.skip = null; MEDIA.now = null; }
+}
+function mediaLabel(){
+  if (!PUSH_CODE) return 'off (open the board with ?push=CODE)';
+  return (MEDIA.paused ? 'paused' : MEDIA.connected ? 'on' : 'connecting…') + (MEDIA.now ? ' · showing ' + (MEDIA.now.name || 'the crowd') : '')
+    + (MEDIA.queue.length ? ' · ' + MEDIA.queue.length + ' waiting' : '');
+}
+pushListen();
 
 // ----- background: lasers from the DJ booth, drifting haze, neon grid floor -----
 const bg = $('bg'), g = bg.getContext('2d');
@@ -1400,6 +1552,7 @@ function setScene(s){
   if (s === 'show' && !RM) setTimeout(() => launch('plane'), rand(6, 12) * 1000);   // something crosses soon after it appears
   if (s === 'rave' && BEAT.mode === 'off' && !BEAT.userOff && navigator.permissions)
     navigator.permissions.query({name:'microphone'}).then(q => { if (q.state === 'granted' && scene === 'rave' && BEAT.mode === 'off') beatStart(); }).catch(() => {});
+  if (s === 'rave') setTimeout(mediaPump, 1500); else if (MEDIA.skip) MEDIA.skip();   // leaving the board ends a push early
   if (s === 'rave'){ closeT10(); hideTitle(true); if (lastCounts) setTimeout(sweepHeader, RM ? 0 : 900); slots.forEach(sl => { if (sl.race && !sl.busy) paint(sl, false); }); pump(); }
   postState();
 }
@@ -1409,7 +1562,7 @@ let ctlWin = null;
 function postState(){
   if (!ctlWin || ctlWin.closed) return;
   try { ctlWin.postMessage({cr:'state', scene, t10Step, next:t10Next(), title:ttlIdx >= 0 ? TITLES[ttlIdx].text : '', mode:MODE,
-    spon:sponStep, sponNext:sponNext(), loop:sponLoop, sponN:SPONSORS.length, active:activeCue(), beat:beatLabel(), beatOn:BEAT.mode !== 'off', src:srcLabel(), srcOn:SRC === 'eh'}, '*'); } catch (e) {}
+    spon:sponStep, sponNext:sponNext(), loop:sponLoop, sponN:SPONSORS.length, active:activeCue(), beat:beatLabel(), beatOn:BEAT.mode !== 'off', src:srcLabel(), srcOn:SRC === 'eh', push:mediaLabel(), pushOn:!!PUSH_CODE && !MEDIA.paused}, '*'); } catch (e) {}
 }
 function srcLabel(){ return MODE !== 'live' ? 'not used in ' + MODE + ' mode' : SRC === 'eh' ? 'on: ElectionHub (press E to go back)' : failCount ? 'off: civicAPI NOT ANSWERING' : 'off: civicAPI'; }
 // which run-of-show cue is on screen right now (-1: none)
@@ -1447,12 +1600,13 @@ function openControls(){
     <h2>Cheese Rave</h2><div class="g"><button id="rave" class="wide" data-a="rave"><b>R</b>Rave board</button>
     <button data-a="board"><b>C</b>Congress board</button><button data-a="flip"><b>F</b>Flip a tile</button>
     <button id="beatb" data-a="beat"><b>B</b>Beat sync<small id="beatl">off</small></button><button data-a="demo"><b>D</b>Demo speed</button>
-    <button id="srcb" class="wide" data-a="source"><b>E</b>Backup results (ElectionHub)<small id="srcl">off</small></button></div>
+    <button id="srcb" class="wide" data-a="source"><b>E</b>Backup results (ElectionHub)<small id="srcl">off</small></button>
+    <button id="pushb" data-a="pushes"><b>M</b>Phone pushes<small id="pushl">off</small></button><button data-a="skipmedia"><b>X</b>Skip this push</button></div>
     <p>Keep the show window full screen on the projector. These buttons work from here; the same keys work in the show window. Number keys follow the run of show; T and S still step the Top 10 and the sponsor slides.</p>
     <script>
       const send = (a, arg) => { if (window.opener) window.opener.postMessage({cr:'cmd', a, arg}, '*'); };
       document.addEventListener('click', e => { const b = e.target.closest('button'); if (b) send(b.dataset.a, b.dataset.arg); });
-      addEventListener('keydown', e => { const k = e.key.toLowerCase(); const m = {h:'show', t:'top10', ' ':'top10', arrowright:'top10', s:'sponsors', l:'sponloop', p:'plane', i:'iss', r:'rave', c:'board', f:'flip', b:'beat', d:'demo', e:'source'}[k];
+      addEventListener('keydown', e => { const k = e.key.toLowerCase(); const m = {h:'show', t:'top10', ' ':'top10', arrowright:'top10', s:'sponsors', l:'sponloop', p:'plane', i:'iss', r:'rave', c:'board', f:'flip', b:'beat', d:'demo', e:'source', x:'skipmedia', m:'pushes'}[k];
         if (m){ e.preventDefault(); send(m); } else if (/^[1-9]$/.test(k)) send('cue', +k - 1); });
       addEventListener('message', e => { const d = e.data; if (!d || d.cr !== 'state') return;
         document.getElementById('st').textContent = (d.scene === 'show' ? 'Showing: home screen' : 'Showing: rave board') + (d.title ? ' · title: ' + d.title : '') + (d.t10Step >= 0 ? ' · Top 10 open' : '')
@@ -1462,6 +1616,7 @@ function openControls(){
         document.getElementById('sloop').classList.toggle('on', d.loop);
         document.getElementById('beatl').textContent = d.beat; document.getElementById('beatb').classList.toggle('on', d.beatOn);
         document.getElementById('srcl').textContent = d.src; document.getElementById('srcb').classList.toggle('on', d.srcOn);
+        document.getElementById('pushl').textContent = d.push; document.getElementById('pushb').classList.toggle('on', d.pushOn);
         document.getElementById('home').classList.toggle('on', d.scene === 'show' && d.t10Step < 0 && !d.title && d.spon < 0);
         document.getElementById('rave').classList.toggle('on', d.scene === 'rave'); });
     <\/script></body></html>`);
@@ -1518,6 +1673,8 @@ const act = {
     else if (c.top10) top10(); },
   sponloop(){ toggleSponLoop(); },
   ctlwin(){ openControls(); },
+  skipmedia(){ if (MEDIA.skip) MEDIA.skip(); },
+  pushes(){ MEDIA.paused = !MEDIA.paused; if (MEDIA.skip && MEDIA.paused) MEDIA.skip(); $('bPush').setAttribute('aria-pressed', !MEDIA.paused); postState(); mediaPump(); },
   source(){ if (MODE !== 'live') return; forceEH = !forceEH; pickSource(); if (!forceEH) schedulePoll(0); postState(); },
   demo(){ CFG.demo = !CFG.demo; $('bDemo').setAttribute('aria-pressed', CFG.demo); $('demoChip').hidden = !CFG.demo; startTimers(false); },
   beat(){ if (BEAT.mode === 'off'){ BEAT.userOff = false; beatStart(); } else { BEAT.userOff = true; beatStop(); } },
@@ -1527,13 +1684,14 @@ ctl.addEventListener('click', e => { const b = e.target.closest('button'); if (b
 addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
-  const k = {f:'flip', k:'call', c:'board', d:'demo', b:'beat', h:'show', s:'sponsors', l:'sponloop', r:'rave', p:'plane', i:'iss', t:'top10', ' ':'top10', arrowright:'top10', w:'ctlwin', e:'source'}[key];
+  const k = {f:'flip', k:'call', c:'board', d:'demo', b:'beat', h:'show', s:'sponsors', l:'sponloop', r:'rave', p:'plane', i:'iss', t:'top10', ' ':'top10', arrowright:'top10', w:'ctlwin', e:'source', x:'skipmedia', m:'pushes'}[key];
   if (k){ e.preventDefault(); act[k](); }
   else if (/^[1-9]$/.test(key) && CUES[+key - 1]){ e.preventDefault(); act.cue(+key - 1); }
 });
 
 // Read-only peek at a race's state, for testing and for cueing from the browser console.
 window.cheeseBoard = {act: (a, arg) => act[a] && act[a](arg), seats: () => ({ours:tally(), civicapi:CIV_SEATS, listed:{S:NAT.S.size, H:NAT.H.size}}),
+  media: () => ({code:!!PUSH_CODE, connected:MEDIA.connected, paused:MEDIA.paused, waiting:MEDIA.queue.length, showing:MEDIA.now && MEDIA.now.name, shown:MEDIA.shown, on:mediaOn, label:mediaLabel()}),
   source: () => ({src:SRC, forced:forceEH, failCount, ehOk:ehOk && ehOk.toISOString(), ehFails, ehApplied, credit:document.querySelector('.credit').textContent}),
   beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
 

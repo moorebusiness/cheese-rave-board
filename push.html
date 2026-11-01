@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Push to the Screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&display=swap">
+<style>
+:root{--night:#03181b;--panel:#072a2f;--line:#1d4146;--teal:#27C6C4;--pink:#FF5AA8;--gold:#ffd62e;--white:#effffc;--muted:#7fa9ab;--err:#ff8a8a;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--night);color:var(--white);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:460px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 16px calc(env(safe-area-inset-bottom,0px) + 28px)}
+h1{font:900 44px/.95 var(--display);text-transform:uppercase;margin:0 0 6px;letter-spacing:.01em}
+h1 span{color:var(--teal)}
+.sub{color:var(--muted);margin:0 0 20px;font-size:14px}
+label{display:block;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+input[type=text]{width:100%;font:600 18px system-ui,sans-serif;color:var(--white);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 14px}
+input[type=text]:focus-visible,button:focus-visible,.pick:focus-within{outline:2px solid var(--pink);outline-offset:2px}
+.pick{position:relative;display:grid;place-items:center;margin:18px 0 0;aspect-ratio:1;border-radius:14px;border:2px dashed var(--line);
+  background:var(--panel);overflow:hidden;cursor:pointer;text-align:center}
+.pick input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.pick .hint{font:900 30px/1 var(--display);text-transform:uppercase;color:var(--teal);padding:16px}
+.pick .hint small{display:block;font:14px system-ui,sans-serif;color:var(--muted);text-transform:none;margin-top:8px}
+.pick img,.pick video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:url(#duoT);pointer-events:none}
+.pick.has{border-style:solid;border-color:var(--teal)}
+.info{min-height:1.4em;margin:10px 2px 0;font-size:14px;color:var(--muted)}
+.info.bad{color:var(--err)}
+button.send{width:100%;margin:14px 0 0;font:900 26px/1 var(--display);text-transform:uppercase;letter-spacing:.02em;color:var(--night);
+  background:var(--gold);border:0;border-radius:12px;padding:18px 16px;cursor:pointer}
+button.send:disabled{background:#3a4a4d;color:#7d9093;cursor:default}
+.bar{height:8px;border-radius:4px;background:var(--panel);overflow:hidden;margin:12px 0 0}
+.bar i{display:block;height:100%;width:0;background:var(--pink);transition:width .2s}
+.ok{margin:16px 0 0;padding:14px 16px;border-radius:12px;background:#0C4E56;color:var(--white)}
+.ok b{color:var(--gold)}
+.fine{margin:22px 2px 0;font-size:13px;color:var(--muted)}
+.fine b{color:var(--white);font-weight:600}
+.locked{padding:18px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="duoT" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values=".299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 0 0 0 1 0"/>
+    <feComponentTransfer><feFuncR type="linear" slope="1.2" intercept="-.08"/><feFuncG type="linear" slope="1.2" intercept="-.08"/><feFuncB type="linear" slope="1.2" intercept="-.08"/></feComponentTransfer>
+    <feComponentTransfer><feFuncR type="table" tableValues=".016 .153 .918"/><feFuncG type="table" tableValues=".145 .776 1"/><feFuncB type="table" tableValues=".165 .769 .984"/></feComponentTransfer></filter>
+</svg>
+<main>
+  <h1>Push to the <span>screen</span></h1>
+  <p class="sub">The Election Night Show &amp; Cheese Rave · Tower Theatre</p>
+
+  <div id="locked" class="locked" hidden>This page needs the push link from the show's organizers. Open the link they sent you.</div>
+
+  <form id="form" hidden>
+    <label for="name">Your name, as it shows on screen</label>
+    <input type="text" id="name" maxlength="40" autocomplete="nickname" placeholder="e.g. Andy">
+
+    <div class="pick" id="pick">
+      <input type="file" id="file" accept="image/*,video/*" aria-label="Choose a photo or video">
+      <div class="hint" id="hint">Choose a photo or video<small>It shows on the board square, in the screen's colors</small></div>
+    </div>
+    <div class="info" id="info" role="status"></div>
+    <button type="submit" class="send" id="send" disabled>Send to the screen</button>
+    <div class="bar" id="bar" hidden><i id="barI"></i></div>
+    <div class="ok" id="ok" hidden><b>Sent.</b> It'll flip onto the board during the Cheese Rave. Want to send another? Pick a new one above.</div>
+
+    <p class="fine"><b>Videos:</b> keep them under 15 seconds (15 MB max). On iPhone, set <b>Settings → Camera → Formats → Most Compatible</b> first, or the screen may not be able to play your clip.</p>
+  </form>
+</main>
+<script>
+(function(){
+  const RELAY = 'https://ntfy.sh/';
+  const MAX_BYTES = 15 * 1024 * 1024, MAX_SECS = 30, SIDE = 1080;
+  const $ = id => document.getElementById(id);
+  const store = { get(k){ try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, set(k, v){ try { localStorage.setItem(k, v); } catch (e) {} } };
+  // the push code arrives in the link's # (never sent to any server), then the address bar is cleaned up
+  let code = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
+  if (code) { store.set('crPushCode', code); history.replaceState(null, '', location.pathname); } else code = store.get('crPushCode');
+  if (!/^[A-Za-z0-9_-]{6,64}$/.test(code)) { $('locked').hidden = false; return; }
+  $('form').hidden = false;
+  $('name').value = store.get('crPushName');
+  $('name').addEventListener('input', () => store.set('crPushName', $('name').value.trim()));
+
+  let ready = null;   // {blob, filename}
+  const info = (t, bad) => { $('info').textContent = t; $('info').className = 'info' + (bad ? ' bad' : ''); };
+  const mb = n => n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+  function preview(el){ const p = $('pick'); p.querySelectorAll('img,video').forEach(x => x.remove()); p.appendChild(el); p.classList.add('has'); $('hint').hidden = true; }
+
+  async function squareJpeg(file){   // center-crop to a square and shrink to 1080px, so photos send fast
+    const url = URL.createObjectURL(file);
+    try {
+      const im = new Image(); im.src = url; await im.decode();
+      const s = Math.min(im.naturalWidth, im.naturalHeight), c = document.createElement('canvas');
+      c.width = c.height = Math.min(SIDE, s);
+      c.getContext('2d').drawImage(im, (im.naturalWidth - s) / 2, (im.naturalHeight - s) / 2, s, s, 0, 0, c.width, c.height);
+      return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('encode')), 'image/jpeg', .86));
+    } finally { URL.revokeObjectURL(url); }
+  }
+  function clipSeconds(file){
+    return new Promise(res => { const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true;
+      v.onloadedmetadata = () => res(v.duration); v.onerror = () => res(NaN); v.src = URL.createObjectURL(file); });
+  }
+
+  $('file').addEventListener('change', async () => {
+    const f = $('file').files[0]; ready = null; $('send').disabled = true; $('ok').hidden = true; $('bar').hidden = true;
+    if (!f) return;
+    try {
+      if (/^image\//.test(f.type)) {
+        info('Getting your photo ready…');
+        const blob = await squareJpeg(f);
+        const im = new Image(); im.src = URL.createObjectURL(blob); preview(im);
+        ready = {blob, filename:'photo.jpg'}; info('Photo ready · ' + mb(blob.size));
+      } else if (/^video\//.test(f.type)) {
+        const secs = await clipSeconds(f);
+        const v = document.createElement('video'); Object.assign(v, {src:URL.createObjectURL(f), muted:true, loop:true, autoplay:true, playsInline:true});
+        v.setAttribute('playsinline', ''); preview(v); v.play().catch(() => {});
+        if (f.size > MAX_BYTES) return info(`That clip is ${mb(f.size)}; the limit is 15 MB. Trim it to about 10 seconds (Photos → Edit) and pick it again.`, true);
+        if (secs > MAX_SECS) return info(`That clip runs ${Math.round(secs)} seconds; the screen shows up to ${MAX_SECS}. Trim it and pick it again.`, true);
+        const ext = (f.name.match(/\.(mp4|mov|m4v|webm)$/i) || [, f.type === 'video/quicktime' ? 'mov' : 'mp4'])[1].toLowerCase();
+        ready = {blob:f, filename:'clip.' + ext}; info('Video ready · ' + mb(f.size) + (isFinite(secs) ? ' · ' + Math.round(secs) + ' seconds' : ''));
+      } else return info('That file isn’t a photo or video.', true);
+      $('send').disabled = false;
+    } catch (e) { info('Couldn’t read that file. Try another one.', true); }
+  });
+
+  $('form').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!ready) return;
+    const name = $('name').value.trim().slice(0, 40);
+    const q = new URLSearchParams({filename:ready.filename}); if (name) q.set('title', name);
+    const x = new XMLHttpRequest();
+    x.open('PUT', RELAY + encodeURIComponent('cheeserave-' + code) + '?' + q);
+    x.upload.onprogress = ev => { if (ev.lengthComputable) $('barI').style.width = (100 * ev.loaded / ev.total).toFixed(0) + '%'; };
+    x.onload = () => {
+      $('send').disabled = false; $('send').textContent = 'Send to the screen';
+      if (x.status >= 200 && x.status < 300) { $('ok').hidden = false; info(''); $('barI').style.width = '100%'; ready = null; $('send').disabled = true; $('file').value = ''; }
+      else if (x.status === 413) info('That file is too big for the relay. Trim the clip and try again.', true);
+      else if (x.status === 429) info('Too many sends from this network right now. Wait a few minutes and try again.', true);
+      else info('Sending failed (' + x.status + '). Try again in a moment.', true);
+    };
+    x.onerror = () => { $('send').disabled = false; $('send').textContent = 'Send to the screen'; info('Couldn’t reach the screen’s relay. Check your connection and try again.', true); };
+    $('send').disabled = true; $('send').textContent = 'Sending…'; $('bar').hidden = false; $('barI').style.width = '0';
+    x.send(ready.blob);
+  });
+})();
+</script>
+</body>
+</html>
