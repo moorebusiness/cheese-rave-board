@@ -336,6 +336,7 @@ body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
   <span id="cueBtns" style="display:contents"></span>
   <button id="bSLoop" data-a="sponloop" aria-pressed="false">Sponsor loop<kbd>L</kbd></button>
   <button id="bRave" data-a="rave">Rave board<kbd>R</kbd></button>
+  <button id="bSrc" class="rv" data-a="source" aria-pressed="false">Backup results<kbd>E</kbd></button>
   <button id="bPlane" class="sh" data-a="plane">Airplane<kbd>P</kbd></button>
   <button id="bIss" class="sh" data-a="iss">ISS<kbd>I</kbd></button>
   <button data-a="ctlwin">Control window<kbd>W</kbd></button>
@@ -510,6 +511,13 @@ const allIn = prov => prov === 'OK' ? ALL_IN : 100;   // elsewhere, all in means
 // Every Senate and House race civicAPI lists (not just the ones on tiles), so the seat charts count the way DDHQ does:
 // seats not on the ballot, plus each race called tonight. Map of civicAPI id -> winning party, or null while open.
 const NAT = {S:new Map(), H:new Map()}, REPORTING = new Set(), CIV_SEATS = {};
+// One key per seat: 'S:TX' for a Senate seat, 'H:CA-22' for a House district (at-large: 'H:AK-AL').
+function seatKey(ch, s){
+  s = String(s || '').toUpperCase();
+  if (ch === 'S'){ const m = s.match(/^([A-Z]{2})(?:$|-SEN)/); return m ? 'S:' + m[1] : null; }
+  const m = s.match(/^([A-Z]{2})-(\d+|AL)$/); if (!m) return null;
+  return 'H:' + m[1] + '-' + (m[2] === 'AL' || +m[2] === 0 ? 'AL' : String(+m[2]).padStart(2, '0'));
+}
 function natCall(x){
   const c = ADAPT.cands(x), w = c.find(k => k.win);
   if (w) return w.p;
@@ -569,21 +577,131 @@ function ingest(list){
     const ch = x.type === 'US Senate' ? 'S' : x.type === 'House of Representatives' ? 'H' : null;
     if (ch && x.province === 'US'){   // civicAPI's own chamber totals: kept only to cross-check ours (cheeseBoard.seats())
       CIV_SEATS[ch] = Object.fromEntries((x.candidates || []).filter(c => c.seats).map(c => [c.party, c.seats])); continue; }
-    if (ch) NAT[ch].set(x.id, natCall(x));
+    const key = ch && (seatKey(ch, ch === 'S' ? x.province : x.district) || 'id:' + x.id);
+    if (ch && !NAT[ch].get(key)) NAT[ch].set(key, natCall(x));   // a called seat stays called (it may have come from the backup)
     const r = x.province === 'OK' ? byCiv[x.id] : byCiv[ADAPT.natKey(x)];
     if (r) applyRecord(r, x);
   }
 }
+let pollT = null;
+const schedulePoll = ms => { clearTimeout(pollT); pollT = setTimeout(poll, ms); };
 async function poll(){
+  if (forceEH){ schedulePoll(POLL_S * 1000); return; }   // the booth switched to the backup by hand: leave civicAPI alone
   const names = Object.keys(QUERIES).filter(k => k !== 'house' || cycle % 2 === 0);   // House list is big: every other pass
   const got = await Promise.allSettled(names.map(k => getRaces(QUERIES[k])));
   const ok = got.filter(g => g.status === 'fulfilled');
-  ok.forEach(g => ingest(g.value));
-  if (ok.length) lastOk = new Date();
   failCount = ok.length === got.length ? 0 : failCount + 1;
+  pickSource();
+  if (SRC === 'civic'){ ok.forEach(g => ingest(g.value)); if (ok.length) lastOk = new Date(); }
   refresh(); setStatus();
   cycle++;
-  setTimeout(poll, (failCount ? Math.min(300, POLL_S * 2 ** (failCount - 1)) : POLL_S) * 1000);
+  schedulePoll(POLL_S * 1000);   // every minute, failing or not, so the board notices civicAPI coming back
+}
+
+// ----- backup results: ElectionHub -----
+// If civicAPI fails three checks in a row (about three minutes), the board reads ElectionHub instead for the races it
+// carries, and goes back to civicAPI on its own once civicAPI answers again. E switches to the backup by hand (and back).
+// ElectionHub publishes from a public GitHub repo; its race calls are AP's and Decision Desk's as reported. It carries
+// most Oklahoma statewide races, every legislative seat, SQ 845 and the national battlegrounds, but not OK-5, SQ 847,
+// the U.S. Senate race or the county races: those hold their last numbers while the backup is on.
+const EH_BASES = ['https://electionhub.org/', 'https://raw.githubusercontent.com/jordanzakarin-lab/electionhub/main/'];
+const EH_FILES = ['data.json', 'statewide/data.json', 'states/governors.json', 'states/data.json', 'initiatives/data.json'];
+const FAILOVER_AFTER = 3;
+let SRC = 'civic', forceEH = false, ehT = null, ehOk = null, ehFails = 0, ehBase = 0, ehApplied = 0;
+function pickSource(){
+  const want = MODE === 'live' && (forceEH || failCount >= FAILOVER_AFTER) ? 'eh' : 'civic';
+  if (want === SRC) return;
+  SRC = want; setCredit(); setStatus(); postState();
+  $('bSrc').setAttribute('aria-pressed', SRC === 'eh');
+  if (SRC === 'eh') pollEH(); else clearTimeout(ehT);
+}
+async function getEH(path){
+  for (let i = 0; i < EH_BASES.length; i++){
+    const k = (ehBase + i) % EH_BASES.length, ac = new AbortController(), to = setTimeout(() => ac.abort(), 20000);
+    try {
+      const res = await fetch(EH_BASES[k] + path + '?t=' + Date.now(), {cache:'no-store', signal:ac.signal});
+      if (res.ok){ const j = await res.json(); if (j && typeof j === 'object'){ ehBase = k; return j; } }
+    } catch (e) {} finally { clearTimeout(to); }
+  }
+  return null;
+}
+async function pollEH(){
+  clearTimeout(ehT);
+  if (SRC !== 'eh') return;
+  const got = await Promise.all(EH_FILES.map(getEH));
+  if (SRC !== 'eh') return;   // civicAPI came back while this was loading
+  if (got.some(Boolean)){ ehOk = new Date(); ehFails = 0; try { ingestEH(...got); } catch (e) { console.warn('ElectionHub data skipped', e); } }
+  else ehFails++;
+  refresh(); setStatus(); postState();
+  ehT = setTimeout(pollEH, POLL_S * 1000);
+}
+// Only well-formed records get through; anything else is ignored and the board keeps its last numbers.
+const ehRows = (j, key) => j && Array.isArray(j[key]) ? j[key].filter(x => x && typeof x === 'object' && typeof x.status === 'string') : [];
+const ehSide = s => s && typeof s === 'object' && typeof s.name === 'string' && s.name ? s : null;
+function ehWinner(x){   // the side that won (or leads)
+  if (x.leader === 'D' && ehSide(x.dem)) return x.dem;
+  if (x.leader === 'R' && ehSide(x.rep)) return x.rep;
+  return [ehSide(x.dem), ehSide(x.rep)].filter(Boolean).sort((a, b) => (+b.votes || 0) - (+a.votes || 0))[0] || null;
+}
+const ehRep = x => { const v = parseFloat(String(x.reporting == null ? '' : x.reporting).replace(/[^\d.]/g, '')); return isFinite(v) ? Math.min(100, v) : null; };
+function applyEH(r, x, st){
+  const used = new Set(), pairs = [];
+  for (const [p, s] of [['D', ehSide(x.dem)], ['R', ehSide(x.rep)]]){
+    if (!s) continue;
+    const c = r.cands.find(k => !used.has(k) && k.n === ADAPT.sur(s.name)) || r.cands.find(k => !used.has(k) && k.p === p);
+    if (c){ used.add(c); pairs.push([c, s]); }
+  }
+  if (!pairs.length) return;
+  for (const c of r.cands) if (!used.has(c)){ c.v = 0; c.pct = null; }
+  for (const [c, s] of pairs){ c.v = +s.votes || 0; c.pct = s.pct == null || s.pct === '' || !isFinite(+s.pct) ? null : +s.pct; }
+  const rep = ehRep(x); if (rep != null) r.rep = rep;
+  r.has = r.cands.some(c => c.v > 0);
+  if (!r.called){
+    const w = ehWinner(x), hit = pairs.find(([, s]) => s === w);
+    if (x.status === 'Called' && hit) callRace(r, r.cands.indexOf(hit[0]), r.seen, 'call');
+    else if (x.status === 'Counting' && r.rep >= allIn(st)){ const li = leaderIdx(r); if (li >= 0) callRace(r, li, r.seen, 'all'); }
+  }
+  r.fin = false; r.seen = true; ehApplied++;
+}
+function applyEHMeasure(r, x){
+  const Y = r.cands.find(c => c.n === 'YES'), N = r.cands.find(c => c.n === 'NO'); if (!Y || !N) return;
+  for (const [c, s] of [[Y, x.yes], [N, x.no]]) if (s && typeof s === 'object'){ c.v = +s.votes || 0; c.pct = s.pct == null || !isFinite(+s.pct) ? null : +s.pct; }
+  const rep = ehRep(x); if (rep != null) r.rep = rep;
+  r.has = Y.v + N.v > 0;
+  if (!r.called){
+    if (x.status === 'Called' && (x.outcome === 'Passed' || x.outcome === 'Failed')) callRace(r, r.cands.indexOf(x.outcome === 'Passed' ? Y : N), r.seen, 'call');
+    else if (x.status === 'Counting' && r.rep >= allIn('OK')){ const li = leaderIdx(r); if (li >= 0) callRace(r, li, r.seen, 'all'); }
+  }
+  r.fin = false; r.seen = true; ehApplied++;
+}
+function ingestEH(cong, sw, gov, leg, ini){
+  for (const x of ehRows(cong, 'races')){   // Senate and House battlegrounds: tiles and the seat charts
+    if (typeof x.id !== 'string') continue;
+    const r = BY_ID[x.id]; if (r && r.ch) applyEH(r, x, x.id.slice(0, 2));
+    const ch = /-SEN$/i.test(x.id) ? 'S' : 'H', key = seatKey(ch, x.id);
+    if (!key || NAT[ch].get(key)) continue;
+    const w = ehWinner(x), rep = ehRep(x), dv = +((x.dem || {}).votes) || 0, rv = +((x.rep || {}).votes) || 0;
+    const decided = x.status === 'Called' || (x.status === 'Counting' && rep != null && rep >= allIn(x.id.slice(0, 2)) && dv !== rv);
+    const p = decided && w ? (x.leader || (w === x.dem ? 'D' : 'R')) : null;
+    NAT[ch].set(key, p ? (p === 'D' || p === 'R' ? p : 'I') : null);
+  }
+  for (const x of [...ehRows(sw, 'races'), ...ehRows(gov, 'races')]){   // governors and statewide offices (a call wins)
+    const r = typeof x.id === 'string' && BY_ID[x.id]; if (r) applyEH(r, x, x.id.slice(0, 2));
+  }
+  for (const x of ehRows(leg, 'races')){   // Oklahoma legislature: state + chamber + district
+    if (String(x.state).toUpperCase() !== 'OK') continue;
+    const n = parseInt(String(x.district).replace(/^\D+/, ''), 10); if (!n) continue;
+    const r = BY_ID['OK-' + (/^(senate|legislature)$/i.test(String(x.chamber).trim()) ? 'SD' : 'HD') + n]; if (r) applyEH(r, x, 'OK');
+  }
+  for (const x of ehRows(ini, 'measures')){   // Oklahoma state questions
+    const m = /^oklahoma$/i.test(String(x.location || '').trim()) && String(x.ballotNo || '').match(/SQ\s*(\d+)/i);
+    const r = m && BY_ID['SQ' + m[1]]; if (r) applyEHMeasure(r, x);
+  }
+}
+function setCredit(){
+  const src = SRC === 'eh' ? 'ELECTIONHUB.ORG' : 'CIVICAPI.ORG';
+  document.querySelector('.credit').textContent = 'RESULTS: ' + src;
+  $('marq').textContent = MARQ.replace('{SRC}', src).repeat(4);
 }
 const hhmm = d => d.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
 function setStatus(){
@@ -591,6 +709,10 @@ function setStatus(){
   $('testChip').hidden = !testSeen;
   if (MODE === 'sample'){ el.className = 'tag sample'; el.textContent = 'SAMPLE NUMBERS · NOT REAL'; return; }
   const tag = MODE === 'rehearse' ? 'REHEARSAL · AUG 25 RUNOFF' : 'LIVE';
+  if (SRC === 'eh'){   // backup on: the chip reports ElectionHub's state
+    if (!ehOk){ el.className = ehFails ? 'tag err' : 'tag wait'; el.textContent = ehFails ? 'RESULTS FEED UNREACHABLE · RETRYING' : 'CONNECTING TO RESULTS'; return; }
+    el.className = ehFails ? 'tag err' : 'tag live'; el.textContent = ehFails ? `RESULTS DELAYED · LAST ${hhmm(ehOk)}` : `${tag} · UPDATED ${hhmm(ehOk)}`; return;
+  }
   if (!lastOk){ el.className = failCount ? 'tag err' : 'tag wait'; el.textContent = failCount ? 'RESULTS FEED UNREACHABLE · RETRYING' : 'CONNECTING TO RESULTS'; return; }
   if (failCount){ el.className = 'tag err'; el.textContent = `RESULTS DELAYED · LAST ${hhmm(lastOk)}`; return; }
   el.className = 'tag live'; el.textContent = `${tag} · UPDATED ${hhmm(lastOk)}`;
@@ -1287,8 +1409,9 @@ let ctlWin = null;
 function postState(){
   if (!ctlWin || ctlWin.closed) return;
   try { ctlWin.postMessage({cr:'state', scene, t10Step, next:t10Next(), title:ttlIdx >= 0 ? TITLES[ttlIdx].text : '', mode:MODE,
-    spon:sponStep, sponNext:sponNext(), loop:sponLoop, sponN:SPONSORS.length, active:activeCue(), beat:beatLabel(), beatOn:BEAT.mode !== 'off'}, '*'); } catch (e) {}
+    spon:sponStep, sponNext:sponNext(), loop:sponLoop, sponN:SPONSORS.length, active:activeCue(), beat:beatLabel(), beatOn:BEAT.mode !== 'off', src:srcLabel(), srcOn:SRC === 'eh'}, '*'); } catch (e) {}
 }
+function srcLabel(){ return MODE !== 'live' ? 'not used in ' + MODE + ' mode' : SRC === 'civic' ? 'off: civicAPI' : forceEH ? 'on (switched by hand)' : 'on: civicAPI not answering'; }
 // which run-of-show cue is on screen right now (-1: none)
 function activeCue(){ return CUES.findIndex(c => c.sponsor != null ? c.sponsor === sponStep : c.title != null ? c.title === ttlIdx : !!c.top10 && t10Step >= 0); }
 addEventListener('message', e => {
@@ -1323,12 +1446,13 @@ function openControls(){
     <h2>In the sky</h2><div class="g"><button data-a="plane"><b>P</b>Airplane</button><button data-a="iss"><b>I</b>ISS</button></div>
     <h2>Cheese Rave</h2><div class="g"><button id="rave" class="wide" data-a="rave"><b>R</b>Rave board</button>
     <button data-a="board"><b>C</b>Congress board</button><button data-a="flip"><b>F</b>Flip a tile</button>
-    <button id="beatb" data-a="beat"><b>B</b>Beat sync<small id="beatl">off</small></button><button data-a="demo"><b>D</b>Demo speed</button></div>
+    <button id="beatb" data-a="beat"><b>B</b>Beat sync<small id="beatl">off</small></button><button data-a="demo"><b>D</b>Demo speed</button>
+    <button id="srcb" class="wide" data-a="source"><b>E</b>Backup results (ElectionHub)<small id="srcl">off</small></button></div>
     <p>Keep the show window full screen on the projector. These buttons work from here; the same keys work in the show window. Number keys follow the run of show; T and S still step the Top 10 and the sponsor slides.</p>
     <script>
       const send = (a, arg) => { if (window.opener) window.opener.postMessage({cr:'cmd', a, arg}, '*'); };
       document.addEventListener('click', e => { const b = e.target.closest('button'); if (b) send(b.dataset.a, b.dataset.arg); });
-      addEventListener('keydown', e => { const k = e.key.toLowerCase(); const m = {h:'show', t:'top10', ' ':'top10', arrowright:'top10', s:'sponsors', l:'sponloop', p:'plane', i:'iss', r:'rave', c:'board', f:'flip', b:'beat', d:'demo'}[k];
+      addEventListener('keydown', e => { const k = e.key.toLowerCase(); const m = {h:'show', t:'top10', ' ':'top10', arrowright:'top10', s:'sponsors', l:'sponloop', p:'plane', i:'iss', r:'rave', c:'board', f:'flip', b:'beat', d:'demo', e:'source'}[k];
         if (m){ e.preventDefault(); send(m); } else if (/^[1-9]$/.test(k)) send('cue', +k - 1); });
       addEventListener('message', e => { const d = e.data; if (!d || d.cr !== 'state') return;
         document.getElementById('st').textContent = (d.scene === 'show' ? 'Showing: home screen' : 'Showing: rave board') + (d.title ? ' · title: ' + d.title : '') + (d.t10Step >= 0 ? ' · Top 10 open' : '')
@@ -1337,6 +1461,7 @@ function openControls(){
         document.querySelectorAll('[id^=cue]').forEach(b => b.classList.toggle('on', b.id === 'cue' + d.active));
         document.getElementById('sloop').classList.toggle('on', d.loop);
         document.getElementById('beatl').textContent = d.beat; document.getElementById('beatb').classList.toggle('on', d.beatOn);
+        document.getElementById('srcl').textContent = d.src; document.getElementById('srcb').classList.toggle('on', d.srcOn);
         document.getElementById('home').classList.toggle('on', d.scene === 'show' && d.t10Step < 0 && !d.title && d.spon < 0);
         document.getElementById('rave').classList.toggle('on', d.scene === 'rave'); });
     <\/script></body></html>`);
@@ -1363,8 +1488,8 @@ function startTimers(first){
 
 // ----- clock, marquee, scaling -----
 function clock(){ $('clock').textContent = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}).replace(/\s?[AP]M/, ''); }
-const m = 'THE ELECTION NIGHT SHOW AND CHEESE RAVE   ·   TOWER THEATRE   ·   OKLAHOMA CITY   ·   PRESENTED BY LET’S FIX THIS   ·   RESULTS VIA CIVICAPI.ORG   ·   ';
-$('marq').textContent = m.repeat(4);
+const MARQ = 'THE ELECTION NIGHT SHOW AND CHEESE RAVE   ·   TOWER THEATRE   ·   OKLAHOMA CITY   ·   PRESENTED BY LET’S FIX THIS   ·   RESULTS VIA {SRC}   ·   ';
+$('marq').textContent = MARQ.replace('{SRC}', 'CIVICAPI.ORG').repeat(4);
 function fitStage(){
   const f = $('fit'); const s = Math.min(f.clientWidth/1920, f.clientHeight/1080);
   stage.style.setProperty('--s', s);
@@ -1393,6 +1518,7 @@ const act = {
     else if (c.top10) top10(); },
   sponloop(){ toggleSponLoop(); },
   ctlwin(){ openControls(); },
+  source(){ if (MODE !== 'live') return; forceEH = !forceEH; pickSource(); if (!forceEH) schedulePoll(0); postState(); },
   demo(){ CFG.demo = !CFG.demo; $('bDemo').setAttribute('aria-pressed', CFG.demo); $('demoChip').hidden = !CFG.demo; startTimers(false); },
   beat(){ if (BEAT.mode === 'off'){ BEAT.userOff = false; beatStart(); } else { BEAT.userOff = true; beatStop(); } },
   fs(){ const d = document.documentElement; try { (document.fullscreenElement ? document.exitFullscreen() : d.requestFullscreen()).catch(() => {}); } catch(e){} }
@@ -1401,13 +1527,14 @@ ctl.addEventListener('click', e => { const b = e.target.closest('button'); if (b
 addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
-  const k = {f:'flip', k:'call', c:'board', d:'demo', b:'beat', h:'show', s:'sponsors', l:'sponloop', r:'rave', p:'plane', i:'iss', t:'top10', ' ':'top10', arrowright:'top10', w:'ctlwin'}[key];
+  const k = {f:'flip', k:'call', c:'board', d:'demo', b:'beat', h:'show', s:'sponsors', l:'sponloop', r:'rave', p:'plane', i:'iss', t:'top10', ' ':'top10', arrowright:'top10', w:'ctlwin', e:'source'}[key];
   if (k){ e.preventDefault(); act[k](); }
   else if (/^[1-9]$/.test(key) && CUES[+key - 1]){ e.preventDefault(); act.cue(+key - 1); }
 });
 
 // Read-only peek at a race's state, for testing and for cueing from the browser console.
 window.cheeseBoard = {act: (a, arg) => act[a] && act[a](arg), seats: () => ({ours:tally(), civicapi:CIV_SEATS, listed:{S:NAT.S.size, H:NAT.H.size}}),
+  source: () => ({src:SRC, forced:forceEH, failCount, ehOk:ehOk && ehOk.toISOString(), ehFails, ehApplied, credit:document.querySelector('.credit').textContent}),
   beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
 
 // ----- boot -----
@@ -1420,7 +1547,7 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => slot
 $('bDemo').setAttribute('aria-pressed', CFG.demo); $('demoChip').hidden = !CFG.demo;
 setStatus(); updateCounts(); setScene(scene);
 startTimers(true);
-if (LIVE) poll();
+if (LIVE) poll();   // (pollEH starts only if the backup is needed)
 showCtl(); clearTimeout(ctlT); ctlT = setTimeout(() => ctl.classList.remove('on'), 7000);
 })();
 </script>
