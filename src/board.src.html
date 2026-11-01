@@ -190,12 +190,12 @@ html:fullscreen body{padding-left:0;padding-right:0}   /* full screen: the slide
   background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,246,200,.95));box-shadow:0 0 18px 4px rgba(255,230,150,.55)}
 #ttl .shine{position:absolute;inset:0;pointer-events:none;opacity:0;
   background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);mix-blend-mode:overlay}
-/* phone pushes: two stacked tiles flip, one at a time, and become a window onto the photo or clip (tinted on a canvas) */
+/* phone pushes: two stacked tiles flip away and one box flips in with the photo or clip (tinted on a canvas) */
 .mface{position:absolute;z-index:3;border-radius:6px;overflow:hidden;background:#000;transform-origin:50% 50%}
 .mface canvas{display:block;width:100%;height:100%}
 .mface::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:6px;box-shadow:inset 0 0 0 3px var(--macc);
   background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0 2px,transparent 2px 4px)}
-.mface.t{--macc:#27C6C4} .mface.p{--macc:#FF5AA8}
+.mface.t{--macc:#27C6C4} .mface.p{--macc:#FF5AA8} .mface.y{--macc:#FFD62E}
 /* sponsor slides: logos on white cards over a dimmed screen. They sit above both the home screen and the board,
    and keep clear of the bottom of the screen, where the band and DJ stand during the rave. */
 #spon{position:absolute;inset:0;z-index:15;pointer-events:none;opacity:0;transition:opacity .6s ease}
@@ -963,8 +963,8 @@ async function showBoard(){
 // ----- phone pushes: photos and short clips sent from the "Push to screen" page (push.html) -----
 // The phone uploads to a private topic on ntfy.sh, a free public relay; the board listens to the same topic. The topic
 // code is never in this file: the booth opens the board with ?push=CODE (remembered after that). On the rave board, four
-// two stacked tiles in the middle columns flip, one at a time, and together become a window onto the photo or clip,
-// cropped to fill it and tinted to the board's turquoise or pink (no names: just the picture). Calls and the Congress board go first; pushes wait their turn, and anything sent during
+// two stacked tiles in the middle columns flip away and one box (about 4:5) flips in with the photo or clip,
+// cropped to fill it and tinted turquoise, pink or yellow in turn (no names: just the picture). Calls and the Congress board go first; pushes wait their turn, and anything sent during
 // the show waits for the rave board. X skips what's showing, M pauses (and resumes) pushes.
 const PUSH_RELAY = 'https://ntfy.sh/';
 const PUSH_CODE = (() => { const q = new URLSearchParams(location.search).get('push');
@@ -973,6 +973,9 @@ const MEDIA_SECS = Math.max(2, +new URLSearchParams(location.search).get('medias
 const CLIP_MAX = 30;   // seconds: a longer clip is cut off here
 const MEDIA = {queue:[], seen:new Set(), paused:false, connected:false, shown:0, lastId:'', es:null, skip:null, now:null, tone:0};
 const PUSH_KEEP_MIN = 150;   // pushes older than this are stale (the relay deletes files after 3 hours)
+// From showtime on, anything sent before showtime (all the testing) is ignored. Before then, everything works as a test.
+const PUSH_SHOW_START = Date.parse('2026-11-03T18:00:00-06:00');
+const pushFloor = () => Math.max(Date.now() >= PUSH_SHOW_START ? PUSH_SHOW_START : 0, Date.now() - PUSH_KEEP_MIN * 60000);
 // What this board has already shown (or dropped), kept across reloads so a reload replays only what's still waiting.
 const pushDone = (() => { try { return new Set(JSON.parse(localStorage.getItem('crPushDone') || '[]')); } catch (e) { return new Set(); } })();
 function markDone(id){ pushDone.add(id); try { localStorage.setItem('crPushDone', JSON.stringify([...pushDone].slice(-300))); } catch (e) {} }
@@ -981,7 +984,7 @@ const PAIRS = [];   // two stacked tiles in the unpinned middle columns (columns
 for (const c of [1, 2, 3]) for (const r of [0, 1]) PAIRS.push([r * 5 + c, (r + 1) * 5 + c]);
 // The tint is painted on a canvas, so photos and clips get exactly the same look (Chrome skips CSS/SVG filters on
 // hardware-decoded video). Gray it, lift the blacks to the dark tone, then give everything the board color.
-const MTONE = {t:{dark:'#04252a', mid:'#27C6C4'}, p:{dark:'#2a0716', mid:'#FF5AA8'}};
+const MTONE = {t:{dark:'#04252a', mid:'#27C6C4'}, p:{dark:'#2a0716', mid:'#FF5AA8'}, y:{dark:'#211a02', mid:'#FFD62E'}};
 function tintMedia(g, w, h, tone){
   const c = MTONE[tone];
   g.globalCompositeOperation = 'saturation'; g.fillStyle = '#808080'; g.fillRect(0, 0, w, h);
@@ -992,7 +995,7 @@ function tintMedia(g, w, h, tone){
 function pushListen(){
   if (!PUSH_CODE || !window.EventSource) return;
   // first connection: everything from the last PUSH_KEEP_MIN minutes; after a drop: everything since the last message
-  const url = PUSH_RELAY + encodeURIComponent('cheeserave-' + PUSH_CODE) + '/sse?since=' + encodeURIComponent(MEDIA.lastId || PUSH_KEEP_MIN + 'm');
+  const url = PUSH_RELAY + encodeURIComponent('cheeserave-' + PUSH_CODE) + '/sse?since=' + encodeURIComponent(MEDIA.lastId || Math.floor(pushFloor() / 1000));
   const es = MEDIA.es = new EventSource(url);
   es.onopen = () => { MEDIA.connected = true; postState(); };
   es.onmessage = e => {
@@ -1002,7 +1005,9 @@ function pushListen(){
     const a = m.attachment;
     if (MEDIA.seen.has(m.id) || pushDone.has(m.id) || !a || typeof a.url !== 'string' || !/^(image|video)\//.test(a.type || '')) return;
     MEDIA.seen.add(m.id);
-    MEDIA.queue.push({id:m.id, url:a.url, video:/^video\//.test(a.type), at:m.time ? m.time * 1000 : Date.now()});
+    const at = m.time ? m.time * 1000 : Date.now();
+    if (at < pushFloor()){ markDone(m.id); return; }
+    MEDIA.queue.push({id:m.id, url:a.url, video:/^video\//.test(a.type), at});
     while (MEDIA.queue.length > 15) markDone(MEDIA.queue.shift().id);   // a flood keeps only the newest 15
     postState(); mediaPump();
   };
@@ -1015,7 +1020,7 @@ function mediaReady(){ return scene === 'rave' && !MEDIA.paused && !mediaOn && !
 let mediaWait = null;
 function mediaPump(){
   clearTimeout(mediaWait);
-  MEDIA.queue = MEDIA.queue.filter(x => Date.now() - x.at < PUSH_KEEP_MIN * 60000 || (markDone(x.id), false));   // stale: drop it
+  MEDIA.queue = MEDIA.queue.filter(x => x.at >= pushFloor() || (markDone(x.id), false));   // stale, or sent before showtime: drop it
   if (!MEDIA.queue.length) return;
   if (!mediaReady()){ mediaWait = setTimeout(mediaPump, 2000); return; }
   const item = MEDIA.queue.shift(); markDone(item.id);
@@ -1050,33 +1055,29 @@ async function showMedia(item){
     if (!pair) return;
     pair.forEach(s => { s.busy = true; clearTimeout(s.timer); });
     while (pair.some(s => s.el.getAnimations().some(a => !(a instanceof CSSAnimation)))) await sleep(60);
-    const tone = MEDIA.tone++ % 2 ? 'p' : 't';
+    const tone = 'tpy'[MEDIA.tone++ % 3];   // turquoise, pink, yellow in turn
     // the window spans both tiles and the gap between them; crop the media to fill it (no letterboxing)
     const boxes = pair.map(s => stageBox(s.el)), top = boxes[0];
     const W = top.w, H = boxes[1].y + boxes[1].h - top.y;
     const sw = el.videoWidth || el.naturalWidth, sh = el.videoHeight || el.naturalHeight;
     const k = Math.max(W / sw, H / sh), ox = (sw - W / k) / 2, oy = (sh - H / k) / 2;
     const px = Math.min(2, (parseFloat(stage.style.getPropertyValue('--s')) || 1) * (window.devicePixelRatio || 1));
-    const faces = boxes.map(b => {
-      const f = document.createElement('div'); f.className = 'mface ' + tone;
-      Object.assign(f.style, {left:b.x + 'px', top:b.y + 'px', width:b.w + 'px', height:b.h + 'px', visibility:'hidden'});
-      const cv = document.createElement('canvas'); cv.width = Math.round(b.w * px); cv.height = Math.round(b.h * px);
-      f.appendChild(cv); stage.appendChild(f);
-      return {f, g:cv.getContext('2d'), cw:cv.width, ch:cv.height, sx:ox, sy:oy + (b.y - top.y) / k, sW:b.w / k, sH:b.h / k};
-    });
-    const draw = () => faces.forEach(o => { o.g.drawImage(el, o.sx, o.sy, o.sW, o.sH, 0, 0, o.cw, o.ch); tintMedia(o.g, o.cw, o.ch, tone); });
+    const face = document.createElement('div'); face.className = 'mface ' + tone;   // one box over both tiles and the gap
+    Object.assign(face.style, {left:top.x + 'px', top:top.y + 'px', width:W + 'px', height:H + 'px', visibility:'hidden'});
+    const cv = document.createElement('canvas'); cv.width = Math.round(W * px); cv.height = Math.round(H * px);
+    face.appendChild(cv); stage.appendChild(face);
+    const g = cv.getContext('2d');
+    const draw = () => { g.drawImage(el, ox, oy, W / k, H / k, 0, 0, cv.width, cv.height); tintMedia(g, cv.width, cv.height, tone); };
     const video = el.tagName === 'VIDEO';
     if (video){ el.currentTime = 0; await el.play().catch(() => {}); const loop = () => { draw(); raf = requestAnimationFrame(loop); }; loop(); }
     else draw();
-    // top tile flips, then the bottom one, each revealing its part of the picture
+    // the two tiles flip away, top then bottom, and the box flips in
     MEDIA.now = item; MEDIA.shown++; postState();
-    for (const [i, s] of pair.entries()){
-      await flipOut(s.el, i ? 40 : 0);
-      s.el.style.visibility = 'hidden';
-      const f = faces[i].f; f.style.visibility = '';
-      if (!RM) await f.animate([{transform:'perspective(1400px) rotateX(-90deg)'}, {transform:'perspective(1400px) rotateX(8deg)', offset:.72}, {transform:'perspective(1400px) rotateX(0deg)'}],
-        {duration:420, easing:'ease-out'}).finished;
-    }
+    await Promise.all(pair.map((s, i) => flipOut(s.el, i * 110)));
+    pair.forEach(s => { s.el.style.visibility = 'hidden'; });
+    face.style.visibility = '';
+    if (!RM) await face.animate([{transform:'perspective(1600px) rotateX(-90deg)'}, {transform:'perspective(1600px) rotateX(8deg)', offset:.72}, {transform:'perspective(1600px) rotateX(0deg)'}],
+      {duration:560, easing:'ease-out'}).finished;
     $('flash').style.background = MTONE[tone].mid;
     if (!RM) $('flash').animate([{opacity:.2}, {opacity:0}], {duration:900, easing:'ease-out'});
     // hold: a photo for MEDIA_SECS, a clip until it ends (or CLIP_MAX); X ends it early
@@ -1086,13 +1087,13 @@ async function showMedia(item){
       else setTimeout(res, MEDIA_SECS * 1000);
     });
     MEDIA.skip = null; MEDIA.now = null;
-    for (const [i, s] of [...pair.entries()].reverse()){   // bottom flips back first, then the top
-      if (!RM) await faces[i].f.animate([{transform:'perspective(1400px) rotateX(0deg)'}, {transform:'perspective(1400px) rotateX(90deg)'}], {duration:230, easing:'ease-in', fill:'forwards'}).finished;
-      faces[i].f.remove();
+    if (!RM) await face.animate([{transform:'perspective(1600px) rotateX(0deg)'}, {transform:'perspective(1600px) rotateX(90deg)'}], {duration:280, easing:'ease-in', fill:'forwards'}).finished;
+    face.remove();
+    await Promise.all(pair.map((s, i) => {
       s.el.style.transform = 'rotateX(90deg)'; s.el.style.visibility = '';
       setRace(s, s.pin || pickRace() || s.race);
-      await flipIn(s.el); s.busy = false; schedule(s);
-    }
+      return flipIn(s.el, i * 110).then(() => { s.busy = false; schedule(s); });
+    }));
     if (video){ el.pause(); el.removeAttribute('src'); el.load(); }
   } finally { cancelAnimationFrame(raf); mediaOn = false; MEDIA.skip = null; MEDIA.now = null; }
 }
@@ -1542,13 +1543,14 @@ function openControls(){
     <button data-a="board"><b>C</b>Congress board</button><button data-a="flip"><b>F</b>Flip a tile</button>
     <button id="beatb" data-a="beat"><b>B</b>Beat sync<small id="beatl">off</small></button><button data-a="demo"><b>D</b>Demo speed</button>
     <button id="srcb" class="wide" data-a="source"><b>E</b>Backup results (ElectionHub)<small id="srcl">off</small></button>
-    <button id="pushb" data-a="pushes"><b>M</b>Phone pushes<small id="pushl">off</small></button><button data-a="skipmedia"><b>X</b>Skip this push</button></div>
+    <button id="pushb" data-a="pushes"><b>M</b>Phone pushes<small id="pushl">off</small></button><button data-a="skipmedia"><b>X</b>Skip this push</button>
+    <button class="wide" data-a="clearpush"><b>⇧X</b>Clear all waiting pushes</button></div>
     <p>Keep the show window full screen on the projector. These buttons work from here; the same keys work in the show window. Number keys follow the run of show; T and S still step the Top 10 and the sponsor slides.</p>
     <script>
       const send = (a, arg) => { if (window.opener) window.opener.postMessage({cr:'cmd', a, arg}, '*'); };
       document.addEventListener('click', e => { const b = e.target.closest('button'); if (b) send(b.dataset.a, b.dataset.arg); });
       addEventListener('keydown', e => { const k = e.key.toLowerCase(); const m = {h:'show', t:'top10', ' ':'top10', arrowright:'top10', s:'sponsors', l:'sponloop', p:'plane', i:'iss', r:'rave', c:'board', f:'flip', b:'beat', d:'demo', e:'source', x:'skipmedia', m:'pushes'}[k];
-        if (m){ e.preventDefault(); send(m); } else if (/^[1-9]$/.test(k)) send('cue', +k - 1); });
+        if (e.shiftKey && k === 'x'){ e.preventDefault(); send('clearpush'); } else if (m){ e.preventDefault(); send(m); } else if (/^[1-9]$/.test(k)) send('cue', +k - 1); });
       addEventListener('message', e => { const d = e.data; if (!d || d.cr !== 'state') return;
         document.getElementById('st').textContent = (d.scene === 'show' ? 'Showing: home screen' : 'Showing: rave board') + (d.title ? ' · title: ' + d.title : '') + (d.t10Step >= 0 ? ' · Top 10 open' : '')
           + (d.spon >= 0 ? ' · sponsor slide ' + (d.spon + 1) + ' of ' + d.sponN : '') + (d.loop ? ' (looping)' : '') + (d.mode !== 'live' ? ' · ' + d.mode.toUpperCase() + ' MODE' : '');
@@ -1615,6 +1617,7 @@ const act = {
   sponloop(){ toggleSponLoop(); },
   ctlwin(){ openControls(); },
   skipmedia(){ if (MEDIA.skip) MEDIA.skip(); },
+  clearpush(){ MEDIA.queue.forEach(x => markDone(x.id)); MEDIA.queue = []; postState(); },
   pushes(){ MEDIA.paused = !MEDIA.paused; if (MEDIA.skip && MEDIA.paused) MEDIA.skip(); $('bPush').setAttribute('aria-pressed', !MEDIA.paused); postState(); mediaPump(); },
   source(){ if (MODE !== 'live') return; forceEH = !forceEH; pickSource(); if (!forceEH) schedulePoll(0); postState(); },
   demo(){ CFG.demo = !CFG.demo; $('bDemo').setAttribute('aria-pressed', CFG.demo); $('demoChip').hidden = !CFG.demo; startTimers(false); },
@@ -1624,6 +1627,7 @@ const act = {
 ctl.addEventListener('click', e => { const b = e.target.closest('button'); if (b && act[b.dataset.a]) act[b.dataset.a](b.dataset.arg); });
 addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.shiftKey && e.key.toLowerCase() === 'x'){ e.preventDefault(); act.clearpush(); return; }   // Shift+X: clear every waiting push
   const key = e.key.toLowerCase();
   const k = {f:'flip', k:'call', c:'board', d:'demo', b:'beat', h:'show', s:'sponsors', l:'sponloop', r:'rave', p:'plane', i:'iss', t:'top10', ' ':'top10', arrowright:'top10', w:'ctlwin', e:'source', x:'skipmedia', m:'pushes'}[key];
   if (k){ e.preventDefault(); act[k](); }

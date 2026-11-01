@@ -34,10 +34,11 @@ Nothing switches on its own. The page opens on the home screen; press **R** for 
 | E | Backup results on/off (switches to ElectionHub by hand) |
 | X | Skip the phone push that's showing |
 | M | Pause or resume phone pushes |
+| Shift+X | Clear every push waiting in line |
 
 ## Phone pushes
 
-People with the push link can send a photo or short clip from their phone (`push.html`). On the rave board, two stacked tiles in the middle columns flip one at a time and together become a window onto it, cropped to fill and tinted to the board's colors, then they flip back to results. Race calls and the Congress board go first; anything sent during the show waits for the rave board.
+People with the push link can send a photo or short clip from their phone (`push.html`). On the rave board, two stacked tiles in the middle columns flip away and one box (about 4:5) flips in with it, cropped to fill and tinted turquoise, pink or yellow in turn, then the tiles flip back to results. Race calls and the Congress board go first; anything sent during the show waits for the rave board. From 6 p.m. on Nov. 3, anything sent before 6 p.m. (testing) is ignored.
 
 The push code is private and is not in this repository: the booth opens the board with `?push=CODE`, and senders get `push.html#CODE`. Files travel through the free public relay ntfy.sh (15 MB per file, so clips under about 15 seconds; files expire after 3 hours).
 
