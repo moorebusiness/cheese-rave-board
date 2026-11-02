@@ -232,8 +232,28 @@ body.idle,body.idle *{cursor:none!important}   /* the pointer hides with the con
 .scard img{display:block}
 .scard .gl{position:absolute;inset:0;pointer-events:none;transform:translateX(-120%);
   background:linear-gradient(105deg,transparent 40%,rgba(255,226,120,.28) 50%,transparent 60%)}
+/* celebrations: a big full-screen moment for a result worth cheering (cheer.json, sent by the producer through Claude) */
+#cheer{position:absolute;inset:0;z-index:18;pointer-events:none;overflow:hidden;display:none}
+#cheer.on{display:block}
+#cheer .cbg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 70% at 50% 40%,rgba(6,44,50,.93),rgba(2,8,12,.98))}
+#cheer .rays{position:absolute;left:50%;top:40%;width:2600px;height:2600px;margin:-1300px 0 0 -1300px;
+  background:repeating-conic-gradient(from 0deg,rgba(255,214,46,.12) 0 5deg,transparent 5deg 15deg);
+  -webkit-mask:radial-gradient(closest-side,#000 18%,transparent 72%);mask:radial-gradient(closest-side,#000 18%,transparent 72%);animation:raysp 70s linear infinite}
+@keyframes raysp{to{transform:rotate(360deg)}}
+#cheerFx{position:absolute;left:0;top:0;width:1920px;height:1080px}
+#cheer .cin{position:absolute;left:100px;right:100px;top:200px;text-align:center}
+#cheerKick{font:600 30px var(--mono);letter-spacing:.32em;color:var(--gold);text-transform:uppercase;white-space:nowrap}
+#cheerHead{margin-top:20px;font:900 230px/.92 var(--display);color:#fff;text-transform:uppercase;white-space:nowrap;letter-spacing:.01em;
+  text-shadow:0 0 70px rgba(255,214,46,.5),0 10px 50px rgba(0,0,0,.6);animation:cheerthrob 1.7s ease-in-out infinite alternate}
+#cheerHead .chw{display:inline-block;white-space:nowrap}
+#cheerHead .chw span{display:inline-block;transform-origin:50% 85%}
+@keyframes cheerthrob{from{transform:scale(1)}to{transform:scale(1.025)}}
+#cheerRule{height:6px;width:1100px;margin:30px auto 0;background:linear-gradient(90deg,transparent,var(--gold) 15%,var(--pink) 50%,var(--teal) 85%,transparent)}
+#cheerSub{margin-top:28px;font:800 66px/1.05 var(--display);color:var(--white);text-transform:uppercase;letter-spacing:.02em}
+#cheerNums{margin-top:20px;font:600 30px var(--mono);letter-spacing:.14em;color:var(--pale)}
+#cheerNums b{color:var(--gold);font-weight:600}
 body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
-@media (prefers-reduced-motion:reduce){.tile::before,.mt,.tag.live::before,#lyMoon,#lyMoonPink,#cheese img{animation:none}}
+@media (prefers-reduced-motion:reduce){.tile::before,.mt,.tag.live::before,#lyMoon,#lyMoonPink,#cheese img,#cheer .rays,#cheerHead{animation:none}}
 /* Block style: the original heavy split-flap look. Solid flaps, condensed black type, big numerals.
    Same color code: Oklahoma turquoise, national pink, called races gold. */
 :root{--display:"Big Shoulders Display","Big Shoulders","Arial Narrow",Impact,sans-serif;
@@ -348,6 +368,11 @@ body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
     <section id="spon" hidden aria-label="Our sponsors">
       <div id="sponHead"><div id="sponKick"></div><div id="sponTitle"></div><div id="sponRule"></div></div>
       <div id="sponGrid"></div>
+    </section>
+    <section id="cheer" aria-live="assertive" aria-label="Celebration">
+      <div class="cbg"></div><div class="rays"></div>
+      <div class="cin"><div id="cheerKick"></div><div id="cheerHead"></div><div id="cheerRule"></div><div id="cheerSub"></div><div id="cheerNums"></div></div>
+      <canvas id="cheerFx" width="1920" height="1080" aria-hidden="true"></canvas>
     </section>
   </div>
 </div>
@@ -958,7 +983,7 @@ function callRace(r, idx, animate, kind){
   else slots.forEach(s => { if (s.race === r && !s.busy) paint(s, false); });
 }
 async function pump(){
-  if (calling || boardOn || sponStep >= 0 || mediaOn || !queue.length) return;   // calls wait while sponsor slides or a phone push is up
+  if (calling || boardOn || sponStep >= 0 || mediaOn || cheerOn || !queue.length) return;   // calls wait while sponsor slides, a phone push or a celebration is up
   calling = true; const r = queue.shift(); nowCalling = r;
   try { await playCall(r); } finally { calling = false; nowCalling = null; }
   pump();
@@ -1012,7 +1037,7 @@ async function playCall(r){
 let boardOn = false;
 async function showBoard(){
   if (boardOn || scene === 'show') return;
-  if (calling || queue.length || sponStep >= 0 || mediaOn){ setTimeout(showBoard, 3000); return; }
+  if (calling || queue.length || sponStep >= 0 || mediaOn || cheerOn){ setTimeout(showBoard, 3000); return; }
   boardOn = true;
   while (slots.some(s => s.busy)) await sleep(80);
   const {s, h} = tally();
@@ -1096,7 +1121,7 @@ function pushListen(){
     setTimeout(pushListen, 4000);
   };
 }
-function mediaReady(){ return scene === 'rave' && !MEDIA.paused && !mediaOn && !boardOn && !calling && !queue.length && sponStep < 0; }
+function mediaReady(){ return scene === 'rave' && !MEDIA.paused && !mediaOn && !boardOn && !calling && !queue.length && sponStep < 0 && !cheerOn; }
 let mediaWait = null;
 function mediaPump(){
   clearTimeout(mediaWait);
@@ -1233,6 +1258,102 @@ async function archiveRun(){
   if (ARCH.todo.length) setTimeout(archiveRun, r && r.ok ? 300 : Math.min(120, 10 * 2 ** Math.min(x.tries - 1, 3)) * 1000);
 }
 pushListen();
+
+// ----- celebrations: a big full-screen moment for a result worth cheering, over whatever is on screen. The producer
+// asks Claude, which commits cheer.json to the site (tools/cheer.py); every board checks it every 20 seconds. Editing
+// cheer.json by hand on GitHub works too: give it a new "id". X ends one early. Race calls and phone pushes wait. -----
+const CHEER_URL = /\.github\.io$/.test(location.hostname) ? 'cheer.json' : 'https://moorebusiness.github.io/cheese-rave-board/cheer.json';
+const CHEER_FRESH_MIN = 10;   // older than this: not shown (a board loaded after the moment has passed)
+let cheerOn = false, cheerBase = null, cheerEnd = null, cheerNext = null, cheerSeen = '';
+try { cheerSeen = localStorage.getItem('crCheerSeen') || ''; } catch (e) {}
+function cheerPoll(){
+  fetch(CHEER_URL + '?t=' + Date.now(), {cache:'no-store'}).then(r => r.ok ? r.json() : null).then(c => {
+    const first = cheerBase === null;
+    if (!c || !c.id || !c.headline){ cheerBase = 'none'; return; }
+    const id = String(c.id); cheerBase = id;
+    if (id === cheerSeen) return;
+    cheerSeen = id; try { localStorage.setItem('crCheerSeen', id); } catch (e) {}
+    const at = Date.parse(c.at || ''), stale = at ? Date.now() - at > CHEER_FRESH_MIN * 60000 : first;
+    if (!stale) celebrate(c);
+  }).catch(() => {}).finally(() => setTimeout(cheerPoll, 20000));
+}
+function cheerNums(id){   // the race's current split, from this board's own results
+  const box = $('cheerNums'); box.textContent = '';
+  const r = id && BY_ID[String(id)];
+  if (!r || !r.has) return;
+  r.cands.slice().sort((a, b) => b.v - a.v).forEach((c, i) => {
+    if (i) box.append('   \u00b7   ');
+    box.append(c.n + ' '); const b = document.createElement('b'); b.textContent = c.pct != null ? (+c.pct).toFixed(1) + '%' : ''; box.append(b);
+  });
+  box.append('   \u00b7   ' + Math.round(r.rep) + '% IN');
+}
+const cfx = $('cheerFx').getContext('2d'), CCOL = ['#FFD62E', '#FF5AA8', '#27C6C4', '#effffc', '#FFD62E'];
+let conf = [], confRaf = 0, confRain = 0;
+function confPiece(x, y, vx, vy){ return {x, y, vx, vy, r:rand(0, 6.28), vr:rand(-.25, .25), s:rand(12, 24), c:CCOL[Math.random() * 5 | 0], tri:Math.random() < .35, f:rand(0, 6.28), vf:rand(.08, .22)}; }
+function volley(x, dir){ for (let i = 0; i < 150; i++){ const a = -Math.PI / 2 + dir * rand(.1, .7), v = rand(20, 38); conf.push(confPiece(x, 1100, Math.cos(a) * v, Math.sin(a) * v)); } }
+function confTick(){
+  cfx.clearRect(0, 0, 1920, 1080);
+  if (performance.now() < confRain) for (let k = 0; k < 2; k++) conf.push(confPiece(rand(0, 1920), -30, rand(-1.5, 1.5), rand(2, 4)));
+  conf = conf.filter(p => p.y < 1140 && p.x > -80 && p.x < 2000);
+  for (const p of conf){
+    p.vx *= .985; p.vy = Math.min(p.vy * .985 + .5, 5.5); p.x += p.vx + Math.sin(p.f) * .8; p.y += p.vy; p.r += p.vr; p.f += p.vf;
+    cfx.save(); cfx.translate(p.x, p.y); cfx.rotate(p.r); cfx.scale(1, Math.cos(p.f)); cfx.fillStyle = p.c;
+    if (p.tri){ cfx.beginPath(); cfx.moveTo(-p.s / 2, p.s / 2); cfx.lineTo(p.s / 2, p.s / 2); cfx.lineTo(0, -p.s / 2); cfx.closePath(); cfx.fill(); }
+    else cfx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
+    cfx.restore();
+  }
+  confRaf = (cheerOn || conf.length) ? requestAnimationFrame(confTick) : 0;
+}
+async function celebrate(c){
+  if (cheerOn){ cheerNext = c; if (cheerEnd) cheerEnd(); return; }
+  cheerOn = true; postState();
+  const el = $('cheer'), head = $('cheerHead'), cin = el.querySelector('.cin');
+  $('cheerKick').textContent = c.kicker || '';
+  $('cheerSub').textContent = c.sub || '';
+  cheerNums(c.race);
+  // the headline: letters in words, so a long one wraps between words (two lines at most) instead of shrinking away
+  head.innerHTML = ''; head.style.fontSize = '230px'; head.style.whiteSpace = 'nowrap';
+  String(c.headline).trim().split(/\s+/).forEach((word, i) => {
+    if (i) head.append(' ');
+    const w = document.createElement('span'); w.className = 'chw';
+    for (const ch of word){ const sp = document.createElement('span'); sp.textContent = ch; w.appendChild(sp); }
+    head.appendChild(w);
+  });
+  el.getAnimations({subtree:true}).filter(a => !(a instanceof CSSAnimation)).forEach(a => a.cancel());
+  el.classList.add('on');
+  const words = [...head.querySelectorAll('.chw')], letters = [...head.querySelectorAll('.chw span')];
+  const lineW = size => words.reduce((w, x) => w + x.offsetWidth, 0) + (words.length - 1) * size * .22;
+  let size = 230; while (lineW(size) > 1680 && size > 150){ size -= 4; head.style.fontSize = size + 'px'; }
+  if (lineW(size) > 1680){   // still too long for one line: two lines
+    head.style.whiteSpace = 'normal';
+    const lines = () => new Set(words.map(x => x.offsetTop)).size;
+    while ((lines() > 2 || words.some(x => x.offsetWidth > 1700)) && size > 72){ size -= 4; head.style.fontSize = size + 'px'; }
+  }
+  const secs = Math.min(90, Math.max(8, +c.secs || 25));
+  if (!RM){
+    el.animate([{opacity:0}, {opacity:1}], {duration:450, easing:'ease-out'});
+    $('flash').style.background = '#FFD62E'; $('flash').animate([{opacity:.5}, {opacity:0}], {duration:1200, easing:'ease-out'});
+    conf = []; volley(-20, 1); volley(1940, -1); setTimeout(() => { if (cheerOn){ volley(-20, 1); volley(1940, -1); } }, 1100);
+    confRain = performance.now() + Math.min(secs, 14) * 1000; if (!confRaf) confRaf = requestAnimationFrame(confTick);
+    $('cheerKick').animate([{opacity:0, letterSpacing:'.8em'}, {opacity:1, letterSpacing:'.32em'}], {duration:1000, delay:250, easing:'ease-out', fill:'backwards'});
+    letters.forEach((sp, k) => sp.animate([
+      {opacity:0, transform:'translateY(-180px) scale(1.5) rotate(-10deg)'},
+      {opacity:1, transform:'translateY(14px) scale(.95) rotate(1deg)', offset:.7}, {opacity:1, transform:'none'}],
+      {duration:720, delay:450 + k * Math.min(60, 900 / letters.length), easing:'cubic-bezier(.2,.8,.3,1.2)', fill:'backwards'}));
+    $('cheerRule').animate([{transform:'scaleX(0)'}, {transform:'scaleX(1)'}], {duration:900, delay:1100, easing:'cubic-bezier(.5,0,.3,1)', fill:'backwards'});
+    $('cheerSub').animate([{opacity:0, transform:'translateY(24px)'}, {opacity:1, transform:'none'}], {duration:700, delay:1500, easing:'ease-out', fill:'backwards'});
+    $('cheerNums').animate([{opacity:0}, {opacity:1}], {duration:700, delay:1900, fill:'backwards'});
+  }
+  await new Promise(res => { cheerEnd = res; setTimeout(res, secs * 1000); });
+  cheerEnd = null;
+  if (!RM) await Promise.all([cin.animate([{opacity:1, transform:'none'}, {opacity:0, transform:'scale(1.06)'}], {duration:600, easing:'ease-in', fill:'forwards'}).finished,
+    el.animate([{opacity:1}, {opacity:0}], {duration:900, easing:'ease-in', fill:'forwards'}).finished]);
+  el.classList.remove('on'); el.getAnimations({subtree:true}).filter(a => !(a instanceof CSSAnimation)).forEach(a => a.cancel());
+  conf = []; confRain = 0; cheerOn = false; postState();
+  if (cheerNext){ const n = cheerNext; cheerNext = null; celebrate(n); return; }
+  pump(); mediaPump();
+}
+if (MODE === 'live' || new URLSearchParams(location.search).has('cheer')) cheerPoll();
 
 // ----- background: lasers from the DJ booth, drifting haze, neon grid floor -----
 const bg = $('bg'), g = bg.getContext('2d');
@@ -1619,6 +1740,7 @@ function beatLabel(){
 }
 function pulse(k){
   BEAT.env = k; BEAT.at = BEAT.lastPulse = performance.now(); BEAT.pulses++;
+  if (cheerOn && !RM) $('cheerHead').animate([{filter:`brightness(${1 + .45 * k})`}, {filter:'brightness(1)'}], {duration:300, easing:'ease-out'});
   if (RM || scene !== 'rave') return;
   const flash = [{filter:`brightness(${1 + .3 * k})`}, {filter:'brightness(1)'}], o = {duration:280, easing:'ease-out'};
   grid.animate(flash, o); board.animate(flash, o); $('top').animate(flash, o); $('band').animate(flash, o);
@@ -1677,7 +1799,7 @@ let ctlWin = null;
 function postState(){
   if (!ctlWin || ctlWin.closed) return;
   try { ctlWin.postMessage({cr:'state', scene, t10Step, next:t10Next(), title:ttlIdx >= 0 ? TITLES[ttlIdx].text : '', mode:MODE,
-    spon:sponStep, sponNext:sponNext(), loop:sponLoop, intro:introOn, sponN:SPONSORS.length, active:activeCue(), beat:beatLabel(), beatOn:BEAT.mode !== 'off', src:srcLabel(), srcOn:SRC === 'eh', push:mediaLabel(), pushOn:!!PUSH_CODE && !MEDIA.paused}, '*'); } catch (e) {}
+    spon:sponStep, sponNext:sponNext(), loop:sponLoop, intro:introOn, cheer:cheerOn, sponN:SPONSORS.length, active:activeCue(), beat:beatLabel(), beatOn:BEAT.mode !== 'off', src:srcLabel(), srcOn:SRC === 'eh', push:mediaLabel(), pushOn:!!PUSH_CODE && !MEDIA.paused}, '*'); } catch (e) {}
 }
 function srcLabel(){ return MODE !== 'live' ? 'not used in ' + MODE + ' mode' : SRC === 'eh' ? 'on: ElectionHub (press E to go back)' : failCount ? 'off: civicAPI NOT ANSWERING' : 'off: civicAPI'; }
 // which run-of-show cue is on screen right now (-1: none)
@@ -1725,7 +1847,7 @@ function openControls(){
       addEventListener('keydown', e => { const k = e.key.toLowerCase(); const m = {h:'show', t:'top10', ' ':'top10', arrowright:'top10', s:'sponsors', l:'sponloop', p:'plane', i:'iss', r:'rave', c:'board', f:'flip', b:'beat', d:'demo', e:'source', x:'skipmedia', m:'pushes'}[k];
         if (e.shiftKey && k === 'x'){ e.preventDefault(); send('clearpush'); } else if (m){ e.preventDefault(); send(m); } else if (/^[1-9]$/.test(k)) send('cue', +k - 1); });
       addEventListener('message', e => { const d = e.data; if (!d || d.cr !== 'state') return;
-        document.getElementById('st').textContent = (d.scene === 'show' ? 'Showing: home screen' : 'Showing: rave board') + (d.title ? ' · title: ' + d.title : '') + (d.t10Step >= 0 ? ' · Top 10 open' : '') + (d.intro ? ' · into the Cheese Rave' : '')
+        document.getElementById('st').textContent = (d.scene === 'show' ? 'Showing: home screen' : 'Showing: rave board') + (d.title ? ' · title: ' + d.title : '') + (d.t10Step >= 0 ? ' · Top 10 open' : '') + (d.intro ? ' · into the Cheese Rave' : '') + (d.cheer ? ' · CELEBRATION (X ends it)' : '')
           + (d.spon >= 0 ? ' · sponsor slide ' + (d.spon + 1) + ' of ' + d.sponN : '') + (d.loop ? ' (looping)' : '') + (d.mode !== 'live' ? ' · ' + d.mode.toUpperCase() + ' MODE' : '');
         const nx = document.getElementById('next'); if (nx) nx.textContent = 'Next: ' + d.next;
         document.querySelectorAll('[id^=cue]').forEach(b => b.classList.toggle('on', b.id === 'cue' + d.active));
@@ -1792,7 +1914,7 @@ const act = {
     else if (c.intro) raveIntro(); },
   sponloop(){ toggleSponLoop(); },
   ctlwin(){ openControls(); },
-  skipmedia(){ if (MEDIA.skip) MEDIA.skip(); },
+  skipmedia(){ if (cheerOn && cheerEnd) cheerEnd(); else if (MEDIA.skip) MEDIA.skip(); },   // X: end a celebration, or skip a push
   clearpush(){ MEDIA.queue.forEach(x => markDone(x.id)); MEDIA.queue = []; postState(); },
   pushes(){ MEDIA.paused = !MEDIA.paused; if (MEDIA.skip && MEDIA.paused) MEDIA.skip(); $('bPush').setAttribute('aria-pressed', !MEDIA.paused); postState(); mediaPump(); },
   source(){ if (MODE !== 'live') return; forceEH = !forceEH; pickSource(); if (!forceEH) schedulePoll(0); postState(); },
@@ -1815,7 +1937,7 @@ window.cheeseBoard = {act: (a, arg) => act[a] && act[a](arg), seats: () => ({our
   media: () => ({code:!!PUSH_CODE, connected:MEDIA.connected, paused:MEDIA.paused, waiting:MEDIA.queue.length, showing:MEDIA.now && (MEDIA.now.video ? 'video' : 'photo'), shown:MEDIA.shown, on:mediaOn, label:mediaLabel(),
     archive:{on:!!ARCHIVE, saved:ARCH.saved, missed:ARCH.missed, todo:ARCH.todo.length, error:ARCH.error}}),
   source: () => ({src:SRC, forced:forceEH, failCount, ehOk:ehOk && ehOk.toISOString(), ehFails, ehApplied, credit:document.querySelector('.credit').textContent}),
-  beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
+  beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), cheer: c => celebrate(c), race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
 
 // ----- boot -----
 fitStage(); clock(); setInterval(clock, 10000);

@@ -45,6 +45,18 @@ The push code is private and is not in this repository: the booth opens the boar
 
 **Saving pushes to Google Drive:** a small Google Apps Script in Andy's account (`src/drive-archive.gs`, deployed as a web app) saves every push the board receives, original and untinted, to a Drive folder called **Cheese Rave pushes**, named by time. Pushes sent before showtime go in its **Testing** subfolder. The booth opens the board once with `&archive=DEPLOYMENT_ID` (remembered after that; `?archive=off` forgets it). Everything is saved, including pushes that get skipped or cleared. The board downloads each file from the relay and sends it to the script, since Google's servers can't reach the relay (a 15 MB clip takes about half a minute, in the background). The control window's phone-push line shows the count ("Drive: 12 saved"), any files missed, or **NOT SAVING** with the reason if saving has stopped.
 
+## Celebrations
+
+For a result worth cheering (say, a state question going down), every open board shows a full-screen celebration over whatever is up: a kicker, a giant headline, a subline, confetti, and optionally the race's current split from the board's own numbers. It holds 25 seconds; **X** ends it early. Race calls and phone pushes wait until it's done.
+
+To send one, ask Claude ("push a big victory for the defeat of SQ 845"), or run:
+
+```
+python3 tools/cheer.py "SQ 845 DEFEATED" --kicker "OKLAHOMA VOTERS SAY NO" --race SQ845
+```
+
+That writes `cheer.json` at the site root and pushes it. Boards check the file every 20 seconds, and GitHub Pages takes about a minute to publish, so it appears one to two minutes later. Without a computer, edit `cheer.json` on github.com: set a new `id` (anything not used before) and a `headline`, then commit. A board that opens more than 10 minutes after a celebration was sent doesn't replay it.
+
 ## Data
 
 Live results come from [civicAPI](https://civicapi.org) and refresh every minute. Seat charts count the way DDHQ does: seats not on the ballot, plus each Senate and House race called tonight.
