@@ -472,7 +472,12 @@ const CALLED_WEIGHT = 0.4;   // called races stay in the rotation, just less oft
 const MAX_QUEUED_CALLS = 5;  // a burst bigger than this gets gold outlines without the animation
 
 // ----- races -----
-let RACES = BAKED.map(b => ({...b, cands: b.cands.map(c => ({n:c.n, p:c.p, v:0, pct:null, win:false})), rep:0, called:null, fin:false, seen:false, has:false,
+// How often each kind of race comes up on a tile (Andy, Nov. 2). Tier 1: Oklahoma statewide, congressional and the state
+// questions. Tier 2: the Oklahoma Legislature and Oklahoma County. Tier 3: other states (3a: the races Andy named; 3b: the
+// other toss-ups). With four tiles pinned to tier 1, a typical screen shows about 7 tier-1 tiles, 5 tier-2 and 3 tier-3.
+const TIER_W = {'1':10, '2':1.2, '3a':2.5, '3b':0.6};
+const okTier = id => /^OK-(HD|SD)\d|^OKCO/.test(id) ? '2' : '1';
+let RACES = BAKED.map(b => ({...b, w:TIER_W[b.tier] || b.w, cands: b.cands.map(c => ({n:c.n, p:c.p, v:0, pct:null, win:false})), rep:0, called:null, fin:false, seen:false, has:false,
   pref: b.cands.map(c => c.n)}));   // pref: the matchup on file, shown until votes arrive
 let BY_ID = {};
 const reindex = () => { BY_ID = Object.fromEntries(RACES.map(r => [r.id, r])); };
@@ -571,7 +576,7 @@ function buildOklahoma(list){
     if (x.province !== 'OK') continue;
     const m = ADAPT.okMeta(x); if (!m || used.has(m.id)) continue;
     used.add(m.id);
-    okRaces.push({id:m.id, label:m.label, w:m.w, m:!!m.m, ok:true, pool:true, ch:null, civ:x.id,
+    okRaces.push({id:m.id, label:m.label, w:TIER_W[okTier(m.id)], tier:okTier(m.id), m:!!m.m, ok:true, pool:true, ch:null, civ:x.id,
       cands:[], rep:0, called:null, fin:false, seen:false, has:false});
   }
   if (!okRaces.length) return false;
@@ -2004,7 +2009,7 @@ window.cheeseBoard = {act: (a, arg) => act[a] && act[a](arg), seats: () => ({our
   media: () => ({code:!!PUSH_CODE, connected:MEDIA.connected, paused:MEDIA.paused, waiting:MEDIA.queue.length, showing:MEDIA.now && (MEDIA.now.video ? 'video' : 'photo'), shown:MEDIA.shown, on:mediaOn, label:mediaLabel(),
     archive:{on:!!ARCHIVE, saved:ARCH.saved, missed:ARCH.missed, todo:ARCH.todo.length, error:ARCH.error}}),
   source: () => ({src:SRC, forced:forceEH, failCount, ehOk:ehOk && ehOk.toISOString(), ehFails, ehApplied, credit:document.querySelector('.credit').textContent}),
-  beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), cheer: c => celebrate(c), pair: id => BY_ID[id] ? top2(BY_ID[id]).map(c => c.n) : null, race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
+  beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), cheer: c => celebrate(c), pair: id => BY_ID[id] ? top2(BY_ID[id]).map(c => c.n) : null, pool: () => RACES.filter(r => r.pool).map(r => ({id:r.id, label:r.label, tier:r.tier, w:r.w, pinned:Object.values(PINS).includes(r.id), pair:top2(r).map(c => c.n)})), race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
 
 // ----- boot -----
 fitStage(); clock(); setInterval(clock, 10000);
