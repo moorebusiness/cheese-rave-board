@@ -637,7 +637,14 @@ function buildOklahoma(list){
   reindex(); resolvePins(); okBuilt = true;
   return true;
 }
+// Before the first polls close on Election Day, any "results" are a provider's test run (civicAPI carried one on Nov. 2:
+// Warner and Barr "winning", 51 House seats "called", none flagged as test data). Until then every race reads zero, so
+// no test call can stick to the board.
+const RESULTS_FROM = Date.parse('2026-11-03T17:00:00-06:00');   // 6 p.m. Eastern: Indiana and Kentucky close first
+const tooEarly = () => MODE === 'live' && Date.now() < RESULTS_FROM;
+const scrub = x => ({...x, percent_reporting:0, candidates:(x.candidates || []).map(c => ({...c, votes:0, percent:null, winner:false}))});
 function ingest(list){
+  if (tooEarly()) list = list.map(x => x.province === 'US' ? x : scrub(x));
   if (!okBuilt && buildOklahoma(list)) reflipAll();
   const byCiv = {};
   RACES.forEach(r => { if (r.civ) byCiv[r.civ] = r; else if (r.key) byCiv[r.key] = r; });
@@ -746,6 +753,7 @@ function applyEHMeasure(r, x){
   r.fin = false; r.seen = true; ehApplied++;
 }
 function ingestEH(cong, sw, gov, leg, ini){
+  if (tooEarly()) return;   // same rule for the backup
   for (const x of ehRows(cong, 'races')){   // Senate and House battlegrounds: tiles and the seat charts
     if (typeof x.id !== 'string') continue;
     const r = BY_ID[x.id]; if (r && r.ch) applyEH(r, x, x.id.slice(0, 2));
