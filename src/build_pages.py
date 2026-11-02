@@ -19,7 +19,10 @@ BLOCK_FONT = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?fa
 import base64
 def uri(f, mime): return f'data:{mime};base64,' + base64.b64encode(open(f, 'rb').read()).decode()
 LAYERS = {'/*__SKYBG__*/': uri('layer-sky.jpg', 'image/jpeg'), '/*__SKYLINE__*/': uri('layer-skyline.webp', 'image/webp'),
-          '/*__MOON__*/': uri('layer-moon.webp', 'image/webp'), '/*__STARS__*/[]': open('stars.json').read()}
+          '/*__MOON__*/': uri('layer-moon.webp', 'image/webp'), '/*__STARS__*/[]': open('stars.json').read(),
+          # cue 9, into the Cheese Rave (intro/prep_intro.py)
+          '/*__TURQ__*/': uri('intro/turq.jpg', 'image/jpeg'), '/*__TURQCITY__*/': uri('intro/turq-city.webp', 'image/webp'),
+          '/*__MOONPINK__*/': uri('intro/moon-pink.webp', 'image/webp'), '/*__CHEESE__*/': uri('intro/cheese.webp', 'image/webp')}
 import json
 _lm = json.load(open('logos/logos.json'))   # sponsor logos (prep_logos.py), baked in so the page needs no other files
 LAYERS['/*__LOGOS__*/{}'] = json.dumps({k: dict(v, src=uri(f'logos/{k}.webp', 'image/webp')) for k, v in _lm.items()}, separators=(',', ':'))

@@ -162,6 +162,21 @@ html:fullscreen body{padding-left:0;padding-right:0}   /* full screen: the slide
 #lyCity{left:0;top:379px;width:1920px;height:701px}
 #lyMoon{left:218px;top:99px;width:378px;height:377px;animation:moonbob 14s ease-in-out infinite alternate}
 @keyframes moonbob{from{transform:translateY(-5px)}to{transform:translateY(5px)}}
+/* cue 9, into the Cheese Rave: the home screen turns turquoise, the moon turns pink, and the cheese rises from behind
+   the buildings (it sits between the turquoise photo and a cutout of the same skyline) */
+#lyTurq,#lyTurqCity,#lyMoonPink{opacity:0;transition:opacity 2.4s ease}
+#lyMoon{transition:opacity 2.4s ease}
+#lyTurq{left:0;top:0;width:1920px;height:1080px}
+#lyTurqCity{left:0;top:354px;width:1920px;height:726px}
+#lyMoonPink{left:175px;top:62px;width:452px;height:452px;animation:moonbob 14s ease-in-out infinite alternate}
+#sky.turq #lyTurq,#sky.turq #lyTurqCity,#sky.turq #lyMoonPink{opacity:1}
+#sky.turq #lyMoon{opacity:0}
+#cheese{position:absolute;left:1345px;top:140px;width:532px;height:560px;visibility:hidden}
+#cheese img{position:relative;display:block;width:100%;height:100%;animation:cheesebob 7s ease-in-out infinite alternate}
+#cheese::before{content:"";position:absolute;inset:-110px;background:radial-gradient(closest-side,rgba(255,214,46,.42),rgba(255,214,46,0));
+  opacity:0;transition:opacity 1.4s ease}
+#cheese.lit::before{opacity:1}
+@keyframes cheesebob{from{transform:translateY(-6px) rotate(-.6deg)}to{transform:translateY(6px) rotate(.6deg)}}
 /* Top 10: a dark glass panel right of the moon, clear of the bottom of the screen; #10 lands at the bottom, later numbers stack above */
 #t10{position:absolute;left:660px;top:118px;width:1200px;height:618px;box-sizing:border-box;padding:28px 44px 30px;border-radius:18px;
   background:rgba(3,8,20,.66);backdrop-filter:blur(8px);box-shadow:0 30px 90px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,214,46,.22);
@@ -217,7 +232,7 @@ html:fullscreen body{padding-left:0;padding-right:0}   /* full screen: the slide
 .scard .gl{position:absolute;inset:0;pointer-events:none;transform:translateX(-120%);
   background:linear-gradient(105deg,transparent 40%,rgba(255,226,120,.28) 50%,transparent 60%)}
 body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
-@media (prefers-reduced-motion:reduce){.tile::before,.mt,.tag.live::before,#lyMoon{animation:none}}
+@media (prefers-reduced-motion:reduce){.tile::before,.mt,.tag.live::before,#lyMoon,#lyMoonPink,#cheese img{animation:none}}
 /*__STYLE__*/
 </style>
 
@@ -263,7 +278,11 @@ body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
       <img class="ly" id="lySky" alt="" src="/*__SKYBG__*/">
       <canvas id="skyfx" width="1920" height="1080" aria-hidden="true"></canvas>
       <img class="ly" id="lyCity" alt="" src="/*__SKYLINE__*/">
+      <img class="ly" id="lyTurq" alt="" src="/*__TURQ__*/">
+      <div id="cheese"><img alt="Cheese Rave for Democracy" src="/*__CHEESE__*/"></div>
+      <img class="ly" id="lyTurqCity" alt="" src="/*__TURQCITY__*/">
       <img class="ly" id="lyMoon" alt="The Election Night Show at Tower Theatre" src="/*__MOON__*/">
+      <img class="ly" id="lyMoonPink" alt="" src="/*__MOONPINK__*/">
       <section id="t10" hidden aria-label="Top 10 list"><div class="t10h"><b>TOP 10</b><span id="t10title"></span></div><div id="t10rows"></div></section>
       <div id="ttl" hidden><div class="kick" id="ttlKick"></div><div class="big" id="ttlBig"></div><div class="rule" id="ttlRule"></div><div class="streak" id="ttlStreak"></div><div class="shine" id="ttlShine"></div></div>
     </div>
@@ -403,8 +422,8 @@ const SPONSORS = [
 ];
 // Number keys in run-of-show order: the first entry is key 1. Each shows a sponsor slide, a title slide, or the Top 10
 // (each press of the Top 10's key adds the next line, the same as T).
-const CUES = [{sponsor:0}, {sponsor:1}, {sponsor:2}, {title:0}, {title:1}, {top10:true}, {title:2}, {title:3}];
-const cueName = c => c.sponsor != null ? SPONSORS[c.sponsor].name : c.title != null ? TITLES[c.title].text : 'Top 10: next';
+const CUES = [{sponsor:0}, {sponsor:1}, {sponsor:2}, {title:0}, {title:1}, {top10:true}, {title:2}, {title:3}, {intro:true}];
+const cueName = c => c.sponsor != null ? SPONSORS[c.sponsor].name : c.title != null ? TITLES[c.title].text : c.intro ? 'Into the Cheese Rave' : 'Top 10: next';
 const SPON_SECS = 12;   // how long each slide holds when the sponsor loop is running
 const LOGO_TRIM = {eastside:.84, sawyer:.88};   // dense, heavy logos read bigger than they are: nudge them down
 // ====================================
@@ -1307,6 +1326,7 @@ async function clearT10Rows(){
 }
 async function top10(){
   if (scene !== 'show') setScene('show');
+  endIntro();
   await sponOff();
   if (ttlIdx >= 0) await hideTitle(true);
   t10Step++;
@@ -1331,6 +1351,7 @@ let ttlIdx = -1, ttlTimer = null;
 async function showTitle(i){
   i = +i; if (!TITLES[i]) return;
   if (scene !== 'show') setScene('show');
+  endIntro();
   await sponOff();
   if (t10Step >= 0) await closeT10();
   if (ttlIdx >= 0) await hideTitle(true);
@@ -1366,8 +1387,38 @@ async function hideTitle(fast){
 }
 async function goHome(){
   if (scene !== 'show') setScene('show');
-  await Promise.all([closeT10(), hideTitle(), sponOff()]);
+  await Promise.all([closeT10(), hideTitle(), sponOff(), endIntro()]);
   postState();
+}
+
+// ----- cue 9, into the Cheese Rave: the home screen fades to turquoise with the pink moon, then the cheese rises from
+// behind the buildings and settles in the sky. R from here fades straight into the rave board; H puts the cheese away.
+const skyEl = $('sky'), cheese = $('cheese');
+let introOn = false, introGo = 0;
+async function raveIntro(){
+  if (scene !== 'show') setScene('show');
+  const already = skyEl.classList.contains('turq');
+  await Promise.all([closeT10(), hideTitle(true), sponOff()]);
+  if (introOn) return;
+  introOn = true; const go = ++introGo;
+  cheese.getAnimations().forEach(a => a.cancel()); cheese.classList.remove('lit'); cheese.style.visibility = 'hidden';
+  skyEl.classList.add('turq'); postState();
+  if (RM){ cheese.style.visibility = 'visible'; cheese.classList.add('lit'); return; }
+  await sleep(already ? 200 : 2500); if (go !== introGo) return;   // the colors first, then the cheese
+  cheese.style.visibility = 'visible';
+  await cheese.animate([{transform:'translateY(740px)'}, {transform:'translateY(-28px)', offset:.8}, {transform:'translateY(7px)', offset:.92}, {transform:'none'}],
+    {duration:3400, easing:'cubic-bezier(.25,.45,.4,1)', fill:'backwards'}).finished.catch(() => {});
+  if (go === introGo) cheese.classList.add('lit');
+}
+async function endIntro(fast){
+  if (!introOn) return;
+  introOn = false; const go = ++introGo;
+  cheese.classList.remove('lit');
+  if (!fast && !RM && cheese.style.visibility === 'visible')   // the cheese sinks back behind the buildings, then the colors go
+    await cheese.animate([{transform:'none'}, {transform:'translateY(740px)'}], {duration:900, easing:'cubic-bezier(.5,0,.75,0)', fill:'forwards'}).finished.catch(() => {});
+  if (go !== introGo) return;
+  cheese.style.visibility = 'hidden'; cheese.getAnimations().forEach(a => a.cancel());
+  skyEl.classList.remove('turq'); postState();
 }
 
 // ----- sponsor slides: one press per slide, a final press closes them; or a loop that holds each slide SPON_SECS -----
@@ -1547,6 +1598,7 @@ function setScene(s){
   if (s === 'rave' && BEAT.mode === 'off' && !BEAT.userOff && navigator.permissions)
     navigator.permissions.query({name:'microphone'}).then(q => { if (q.state === 'granted' && scene === 'rave' && BEAT.mode === 'off') beatStart(); }).catch(() => {});
   if (s === 'rave') setTimeout(mediaPump, 1500); else if (MEDIA.skip) MEDIA.skip();   // leaving the board ends a push early
+  if (s === 'rave' && introOn) setTimeout(() => { if (scene === 'rave') endIntro(true); }, 1900);   // after the home screen has faded out
   if (s === 'rave'){ closeT10(); hideTitle(true); if (lastCounts) setTimeout(sweepHeader, RM ? 0 : 900); slots.forEach(sl => { if (sl.race && !sl.busy) paint(sl, false); }); pump(); }
   postState();
 }
@@ -1556,11 +1608,11 @@ let ctlWin = null;
 function postState(){
   if (!ctlWin || ctlWin.closed) return;
   try { ctlWin.postMessage({cr:'state', scene, t10Step, next:t10Next(), title:ttlIdx >= 0 ? TITLES[ttlIdx].text : '', mode:MODE,
-    spon:sponStep, sponNext:sponNext(), loop:sponLoop, sponN:SPONSORS.length, active:activeCue(), beat:beatLabel(), beatOn:BEAT.mode !== 'off', src:srcLabel(), srcOn:SRC === 'eh', push:mediaLabel(), pushOn:!!PUSH_CODE && !MEDIA.paused}, '*'); } catch (e) {}
+    spon:sponStep, sponNext:sponNext(), loop:sponLoop, intro:introOn, sponN:SPONSORS.length, active:activeCue(), beat:beatLabel(), beatOn:BEAT.mode !== 'off', src:srcLabel(), srcOn:SRC === 'eh', push:mediaLabel(), pushOn:!!PUSH_CODE && !MEDIA.paused}, '*'); } catch (e) {}
 }
 function srcLabel(){ return MODE !== 'live' ? 'not used in ' + MODE + ' mode' : SRC === 'eh' ? 'on: ElectionHub (press E to go back)' : failCount ? 'off: civicAPI NOT ANSWERING' : 'off: civicAPI'; }
 // which run-of-show cue is on screen right now (-1: none)
-function activeCue(){ return CUES.findIndex(c => c.sponsor != null ? c.sponsor === sponStep : c.title != null ? c.title === ttlIdx : !!c.top10 && t10Step >= 0); }
+function activeCue(){ return CUES.findIndex(c => c.sponsor != null ? c.sponsor === sponStep : c.title != null ? c.title === ttlIdx : c.intro ? introOn : !!c.top10 && t10Step >= 0); }
 addEventListener('message', e => {
   const d = e.data;
   if (!d || d.cr !== 'cmd' || !ctlWin || e.source !== ctlWin || !act[d.a]) return;
@@ -1570,7 +1622,7 @@ function openControls(){
   const w = window.open('', 'cheeseRaveControls', 'width=480,height=860');
   if (!w){ showCtl(); return; }   // pop-ups blocked: the on-screen buttons still work
   ctlWin = w;
-  const cueBtns = CUES.map((c, i) => `<button id="cue${i}" data-a="cue" data-arg="${i}"${c.top10 ? ' class="t10"' : ''}><b>${i + 1}</b>${cueName(c).replace(/[<&]/g, '')}${c.top10 ? '<small id="next"></small>' : ''}</button>`).join('');
+  const cueBtns = CUES.map((c, i) => `<button id="cue${i}" data-a="cue" data-arg="${i}"${c.top10 ? ' class="t10"' : c.intro ? ' class="wide"' : ''}><b>${i + 1}</b>${cueName(c).replace(/[<&]/g, '')}${c.top10 ? '<small id="next"></small>' : ''}</button>`).join('');
   w.document.open();
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Cheese Rave controls</title><style>
     :root{color-scheme:dark}body{margin:0;padding:18px;background:#040f11;color:#effffc;font:15px system-ui,-apple-system,sans-serif}
@@ -1604,7 +1656,7 @@ function openControls(){
       addEventListener('keydown', e => { const k = e.key.toLowerCase(); const m = {h:'show', t:'top10', ' ':'top10', arrowright:'top10', s:'sponsors', l:'sponloop', p:'plane', i:'iss', r:'rave', c:'board', f:'flip', b:'beat', d:'demo', e:'source', x:'skipmedia', m:'pushes'}[k];
         if (e.shiftKey && k === 'x'){ e.preventDefault(); send('clearpush'); } else if (m){ e.preventDefault(); send(m); } else if (/^[1-9]$/.test(k)) send('cue', +k - 1); });
       addEventListener('message', e => { const d = e.data; if (!d || d.cr !== 'state') return;
-        document.getElementById('st').textContent = (d.scene === 'show' ? 'Showing: home screen' : 'Showing: rave board') + (d.title ? ' · title: ' + d.title : '') + (d.t10Step >= 0 ? ' · Top 10 open' : '')
+        document.getElementById('st').textContent = (d.scene === 'show' ? 'Showing: home screen' : 'Showing: rave board') + (d.title ? ' · title: ' + d.title : '') + (d.t10Step >= 0 ? ' · Top 10 open' : '') + (d.intro ? ' · into the Cheese Rave' : '')
           + (d.spon >= 0 ? ' · sponsor slide ' + (d.spon + 1) + ' of ' + d.sponN : '') + (d.loop ? ' (looping)' : '') + (d.mode !== 'live' ? ' · ' + d.mode.toUpperCase() + ' MODE' : '');
         const nx = document.getElementById('next'); if (nx) nx.textContent = 'Next: ' + d.next;
         document.querySelectorAll('[id^=cue]').forEach(b => b.classList.toggle('on', b.id === 'cue' + d.active));
@@ -1612,7 +1664,7 @@ function openControls(){
         document.getElementById('beatl').textContent = d.beat; document.getElementById('beatb').classList.toggle('on', d.beatOn);
         document.getElementById('srcl').textContent = d.src; document.getElementById('srcb').classList.toggle('on', d.srcOn);
         document.getElementById('pushl').textContent = d.push; document.getElementById('pushb').classList.toggle('on', d.pushOn);
-        document.getElementById('home').classList.toggle('on', d.scene === 'show' && d.t10Step < 0 && !d.title && d.spon < 0);
+        document.getElementById('home').classList.toggle('on', d.scene === 'show' && d.t10Step < 0 && !d.title && d.spon < 0 && !d.intro);
         document.getElementById('rave').classList.toggle('on', d.scene === 'rave'); });
     <\/script></body></html>`);
   w.document.close();
@@ -1665,7 +1717,8 @@ const act = {
   cue(i){ const c = CUES[+i]; if (!c) return;
     if (c.sponsor != null){ stopSponLoop(); if (sponStep !== c.sponsor) showSponsors(c.sponsor); }
     else if (c.title != null) showTitle(c.title);
-    else if (c.top10) top10(); },
+    else if (c.top10) top10();
+    else if (c.intro) raveIntro(); },
   sponloop(){ toggleSponLoop(); },
   ctlwin(){ openControls(); },
   skipmedia(){ if (MEDIA.skip) MEDIA.skip(); },

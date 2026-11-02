@@ -21,6 +21,7 @@ Nothing switches on its own. The page opens on the home screen; press **R** for 
 | 5 | Wait, Wait...I know this! |
 | 6 | Top 10 (each press adds a line) |
 | 7 / 8 | AJ Griffin / Erika Lucas |
+| 9 | Into the Cheese Rave: the sky turns turquoise, the moon turns pink, the cheese rises from behind the buildings. Press R from here to fade into the rave board |
 | L | Sponsor loop (slides 1–3, 12 seconds each) |
 | P / I | Send an airplane / the ISS across |
 
