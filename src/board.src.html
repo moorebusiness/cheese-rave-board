@@ -456,7 +456,7 @@ const TITLES = [
 const SPONSORS = [
   {name:'Sponsors 1', kicker:'THE ELECTION NIGHT SHOW & CHEESE RAVE', head:'Thank you to our sponsors', logos:['gazette', 'infocus']},
   {name:'Sponsors 2', kicker:'THE ELECTION NIGHT SHOW & CHEESE RAVE', head:'Thank you to our sponsors',
-   logos:['cfo', 'kpg', 'mitchelltalks', 'vox', 'sawyer', 'focus', 'konjo']},
+   logos:['cfo', 'kpg', 'sawyer', 'shortle', 'mitchelltalks', 'vox', 'focus', 'konjo']},   // four on top, four below
   {name:'Food sponsors', kicker:'THE ELECTION NIGHT SHOW & CHEESE RAVE', head:'Thank you to our food sponsors',
    logos:['boomtown', 'fuzzys', 'tacoempire', 'eastside', 'stonehorse', 'empireslice']},
 ];
@@ -465,7 +465,7 @@ const SPONSORS = [
 const CUES = [{sponsor:0}, {sponsor:1}, {sponsor:2}, {title:0}, {title:1}, {top10:true}, {title:2}, {title:3}, {intro:true}];
 const cueName = c => c.sponsor != null ? SPONSORS[c.sponsor].name : c.title != null ? TITLES[c.title].text : c.intro ? 'Into the Cheese Rave' : 'Top 10: next';
 const SPON_SECS = 12;   // how long each slide holds when the sponsor loop is running
-const LOGO_TRIM = {eastside:.84, sawyer:.88};   // dense, heavy logos read bigger than they are: nudge them down
+const LOGO_TRIM = {eastside:.84, sawyer:.88, shortle:.8};   // dense, heavy logos read bigger than they are: nudge them down
 // ====================================
 const LOGOS = /*__LOGOS__*/{};
 const CALLED_WEIGHT = 0.4;   // called races stay in the rotation, just less often
