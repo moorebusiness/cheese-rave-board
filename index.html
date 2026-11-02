@@ -189,7 +189,7 @@ body.idle,body.idle *{cursor:none!important}   /* the pointer hides with the con
 #t10rows{display:flex;flex-direction:column-reverse;justify-content:flex-start;gap:10px;min-height:0;overflow:hidden}
 .t10r{display:grid;grid-template-columns:100px minmax(0,1fr);align-items:center;gap:22px;min-height:78px}
 .t10r .no{font:900 78px/.9 var(--display);color:var(--gold);text-align:right;text-shadow:0 0 24px rgba(255,214,46,.35)}
-.t10r .tx{font:800 40px/1.08 var(--display);color:var(--white);letter-spacing:.01em;overflow:hidden;max-height:2.2em}
+.t10r .tx{font:800 40px/1.08 var(--display);color:var(--white);letter-spacing:.01em;overflow:hidden;max-height:2.2em;text-wrap:balance}
 /* title slides: a big entrance, then the title settles into a small tag in the top right while the segment runs */
 #ttl{position:absolute;left:640px;top:104px;width:1220px;box-sizing:border-box;padding:26px 30px;text-align:center;border-radius:16px;
   transform-origin:100% 0;transition:transform 1.1s cubic-bezier(.6,0,.2,1),background-color 1.1s ease,box-shadow 1.1s ease}
@@ -491,10 +491,17 @@ let scene = SCENE_Q === 'show' || SCENE_Q === 'rave' ? SCENE_Q : (MODE === 'rehe
 // ===== Show content: edit these =====
 // Top 10 list. Andy is still writing it: replace the title and lines when it's final.
 const TOP10 = {
-  title: 'TOP 10 LIST TITLE GOES HERE',
-  lines: {10:'Line ten goes here', 9:'Line nine goes here', 8:'Line eight goes here', 7:'Line seven goes here',
-          6:'Line six goes here', 5:'Line five goes here', 4:'Line four goes here', 3:'Line three goes here',
-          2:'Line two goes here', 1:'Line one goes here'},
+  title: 'THINGS OVERHEARD WHILE IN LINE TO VOTE TODAY IN OKLAHOMA',
+  lines: {10:'I\u2019d like to file an initiative petition to keep Wemby south of the Red River.',
+          9:'If the Cheese Rave doesn\u2019t have gouda, I\u2019m not going.',
+          8:'I loaned my campaign $12.8 million and all I got was this lousy t-\u2060shirt.',
+          7:'If they\u2019re going to gerrymander OKC, we should at least get an early voting site in each congressional district.',
+          6:'\u2018Broke and Woke\u2019 is basically two-\u2060thirds of my personality these days.',
+          5:'Dirty Smelter was my nickname in high school. Not as cool as Talafreako.',
+          4:'Which box do I check to make the text messages stop?',
+          3:'Two words: Banana cleaver',
+          2:'Who wants to go to the Cheesecake Factory after this?',
+          1:'I\u2019m voting today because I know that decisions are made by those who\u2026SHOW UP!'},
 };
 // Title slides for segments and guests. Which number key shows each one is set in CUES below.
 const TITLES = [
