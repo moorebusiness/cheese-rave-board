@@ -478,7 +478,7 @@ const MAX_QUEUED_CALLS = 5;  // a burst bigger than this gets gold outlines with
 const TIER_W = {'1':10, '2':1.2, '3a':2.5, '3b':0.6};
 const okTier = id => /^OK-(HD|SD)\d|^OKCO/.test(id) ? '2' : '1';
 let RACES = BAKED.map(b => ({...b, w:TIER_W[b.tier] || b.w, cands: b.cands.map(c => ({n:c.n, p:c.p, v:0, pct:null, win:false})), rep:0, called:null, fin:false, seen:false, has:false,
-  pref: b.cands.map(c => c.n)}));   // pref: the matchup on file, shown until votes arrive
+  pref: b.cands.map(c => c.n + '|' + c.p)}));   // pref: the matchup on file (name and party), shown until votes arrive
 let BY_ID = {};
 const reindex = () => { BY_ID = Object.fromEntries(RACES.map(r => [r.id, r])); };
 reindex();
@@ -488,8 +488,10 @@ const rank = c => c.p === 'Q' ? (c.n === 'YES' ? 0 : 1) : ({D:0, R:1})[c.p] ?? 2
 function top2(r){
   const c = r.cands.slice();
   const any = c.some(x => x.v > 0);
-  const pi = x => { const i = (r.pref || []).indexOf(x.n); return i < 0 ? 99 : i; };
-  const pair = (any ? c.sort((a, b) => b.v - a.v) : c.sort((a, b) => pi(a) - pi(b) || rank(a) - rank(b))).slice(0, 2);
+  const pi = x => { const i = (r.pref || []).indexOf(x.n + '|' + x.p); return i < 0 ? 99 : i; };
+  const seen = new Set();   // one entry per name and party (Alaska's feed lists Sullivan twice)
+  const pair = (any ? c.sort((a, b) => b.v - a.v) : c.sort((a, b) => pi(a) - pi(b) || rank(a) - rank(b)))
+    .filter(x => { const k = x.n + '|' + x.p; return seen.has(k) ? false : seen.add(k); }).slice(0, 2);
   const side = c => c.p === 'Q' ? rank(c) : c.p === 'D' ? 0 : c.p === 'R' ? 2 : 1;   // Republicans on the right, an independent on the left
   return pair.sort((a, b) => side(a) - side(b));
 }
