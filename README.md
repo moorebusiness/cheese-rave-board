@@ -47,7 +47,7 @@ The push code is private and is not in this repository: the booth opens the boar
 
 ## Celebrations
 
-For a result worth cheering (say, a state question going down), every open board shows a full-screen celebration over whatever is up: a kicker, a giant headline, a subline, confetti, and optionally the race's current split from the board's own numbers. It holds 25 seconds; **X** ends it early. Race calls and phone pushes wait until it's done.
+For a result worth cheering (say, a state question going down), every open board drops a full-screen rave moment over whatever is up: a riser, then the drop (one big flash, the headline slams in), then lasers from the DJ booth, a neon tunnel, a headline that punches and splits pink and teal, and two Cheese Rave logos bouncing like hype men, all on the beat (the room's beat when beat sync hears it, otherwise 128 BPM). A subline and the race's current split can sit under the headline. Flashes stay under three a second. It holds 25 seconds; **X** ends it early. Race calls and phone pushes wait until it's done.
 
 To send one, ask Claude ("push a big victory for the defeat of SQ 845"), or run:
 

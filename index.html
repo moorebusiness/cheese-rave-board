@@ -232,28 +232,32 @@ body.idle,body.idle *{cursor:none!important}   /* the pointer hides with the con
 .scard img{display:block}
 .scard .gl{position:absolute;inset:0;pointer-events:none;transform:translateX(-120%);
   background:linear-gradient(105deg,transparent 40%,rgba(255,226,120,.28) 50%,transparent 60%)}
-/* celebrations: a big full-screen moment for a result worth cheering (cheer.json, sent by the producer through Claude) */
+/* celebrations: a rave-sized moment for a result worth cheering (cheer.json, sent by the producer through Claude):
+   a riser, the drop, then lasers, a neon tunnel and a split-color headline on the beat */
 #cheer{position:absolute;inset:0;z-index:18;pointer-events:none;overflow:hidden;display:none}
 #cheer.on{display:block}
-#cheer .cbg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 70% at 50% 40%,rgba(6,44,50,.93),rgba(2,8,12,.98))}
-#cheer .rays{position:absolute;left:50%;top:40%;width:2600px;height:2600px;margin:-1300px 0 0 -1300px;
-  background:repeating-conic-gradient(from 0deg,rgba(255,214,46,.12) 0 5deg,transparent 5deg 15deg);
-  -webkit-mask:radial-gradient(closest-side,#000 18%,transparent 72%);mask:radial-gradient(closest-side,#000 18%,transparent 72%);animation:raysp 70s linear infinite}
-@keyframes raysp{to{transform:rotate(360deg)}}
+#cheer .cbg{position:absolute;inset:0;background:radial-gradient(ellipse 75% 65% at 50% 39%,rgba(10,16,38,.96),rgba(1,3,8,.99))}
 #cheerFx{position:absolute;left:0;top:0;width:1920px;height:1080px}
 #cheer .cin{position:absolute;left:100px;right:100px;top:200px;text-align:center}
-#cheerKick{font:600 30px var(--mono);letter-spacing:.32em;color:var(--gold);text-transform:uppercase;white-space:nowrap}
-#cheerHead{margin-top:20px;font:900 230px/.92 var(--display);color:#fff;text-transform:uppercase;white-space:nowrap;letter-spacing:.01em;
-  text-shadow:0 0 70px rgba(255,214,46,.5),0 10px 50px rgba(0,0,0,.6);animation:cheerthrob 1.7s ease-in-out infinite alternate}
-#cheerHead .chw{display:inline-block;white-space:nowrap}
-#cheerHead .chw span{display:inline-block;transform-origin:50% 85%}
-@keyframes cheerthrob{from{transform:scale(1)}to{transform:scale(1.025)}}
+#cheerKick{font:600 30px var(--mono);letter-spacing:.32em;color:var(--gold);text-transform:uppercase;white-space:nowrap;text-shadow:0 0 24px currentColor}
+#cheerHeadWrap{position:relative;margin-top:20px}
+.chl{font:900 230px/.92 var(--display);text-transform:uppercase;white-space:nowrap;letter-spacing:.01em}
+.chl .chw{display:inline-block;white-space:nowrap}
+.chl .chw span{display:inline-block}
+#cheerHead{position:relative;color:#fff;--glow:#FFD62E;text-shadow:0 0 34px var(--glow),0 0 90px var(--glow),0 10px 40px rgba(0,0,0,.5)}
+.cghost{position:absolute;left:0;right:0;top:0;opacity:0}
+.cghost.p{color:#FF5AA8;transform:translate(-6px,0)} .cghost.t{color:#27C6C4;transform:translate(6px,0)}
 #cheerRule{height:6px;width:1100px;margin:30px auto 0;background:linear-gradient(90deg,transparent,var(--gold) 15%,var(--pink) 50%,var(--teal) 85%,transparent)}
 #cheerSub{margin-top:28px;font:800 66px/1.05 var(--display);color:var(--white);text-transform:uppercase;letter-spacing:.02em}
 #cheerNums{margin-top:20px;font:600 30px var(--mono);letter-spacing:.14em;color:var(--pale)}
 #cheerNums b{color:var(--gold);font-weight:600}
+.ccheese{position:absolute;top:505px;width:300px;opacity:0;filter:drop-shadow(0 0 28px rgba(255,214,46,.55))}
+.ccheese.l{left:64px;transform:rotate(-8deg)} .ccheese.r{right:64px;transform:rotate(8deg)}
+#cheer .cflash{position:absolute;inset:0;background:#fff;opacity:0}
+#cheerHeadWrap,.cghost,#cheerHead,#cheerKick,.ccheese,.chaze{will-change:transform}   /* own layers: the big glowing text isn't repainted every frame */
+.chaze{position:absolute;bottom:-380px;width:1500px;height:760px;margin-left:-750px;opacity:0;background:radial-gradient(closest-side,var(--hz),transparent)}
 body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
-@media (prefers-reduced-motion:reduce){.tile::before,.mt,.tag.live::before,#lyMoon,#lyMoonPink,#cheese img,#cheer .rays,#cheerHead{animation:none}}
+@media (prefers-reduced-motion:reduce){.tile::before,.mt,.tag.live::before,#lyMoon,#lyMoonPink,#cheese img{animation:none}}
 /* Block style: the original heavy split-flap look. Solid flaps, condensed black type, big numerals.
    Same color code: Oklahoma turquoise, national pink, called races gold. */
 :root{--display:"Big Shoulders Display","Big Shoulders","Arial Narrow",Impact,sans-serif;
@@ -370,9 +374,12 @@ body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
       <div id="sponGrid"></div>
     </section>
     <section id="cheer" aria-live="assertive" aria-label="Celebration">
-      <div class="cbg"></div><div class="rays"></div>
-      <div class="cin"><div id="cheerKick"></div><div id="cheerHead"></div><div id="cheerRule"></div><div id="cheerSub"></div><div id="cheerNums"></div></div>
+      <div class="cbg"></div>
+      <div class="chaze" style="left:200px"></div><div class="chaze" style="left:960px"></div><div class="chaze" style="left:1720px"></div>
       <canvas id="cheerFx" width="1920" height="1080" aria-hidden="true"></canvas>
+      <img class="ccheese l" alt=""><img class="ccheese r" alt="">
+      <div class="cin"><div id="cheerKick"></div><div id="cheerHeadWrap"><div class="chl cghost p" aria-hidden="true"></div><div class="chl cghost t" aria-hidden="true"></div><div class="chl" id="cheerHead"></div></div><div id="cheerRule"></div><div id="cheerSub"></div><div id="cheerNums"></div></div>
+      <div class="cflash"></div>
     </section>
   </div>
 </div>
@@ -1287,29 +1294,113 @@ function cheerNums(id){   // the race's current split, from this board's own res
   });
   box.append('   \u00b7   ' + Math.round(r.rep) + '% IN');
 }
-const cfx = $('cheerFx').getContext('2d'), CCOL = ['#FFD62E', '#FF5AA8', '#27C6C4', '#effffc', '#FFD62E'];
-let conf = [], confRaf = 0, confRain = 0;
-function confPiece(x, y, vx, vy){ return {x, y, vx, vy, r:rand(0, 6.28), vr:rand(-.25, .25), s:rand(12, 24), c:CCOL[Math.random() * 5 | 0], tri:Math.random() < .35, f:rand(0, 6.28), vf:rand(.08, .22)}; }
-function volley(x, dir){ for (let i = 0; i < 150; i++){ const a = -Math.PI / 2 + dir * rand(.1, .7), v = rand(20, 38); conf.push(confPiece(x, 1100, Math.cos(a) * v, Math.sin(a) * v)); } }
-function confTick(){
-  cfx.clearRect(0, 0, 1920, 1080);
-  if (performance.now() < confRain) for (let k = 0; k < 2; k++) conf.push(confPiece(rand(0, 1920), -30, rand(-1.5, 1.5), rand(2, 4)));
-  conf = conf.filter(p => p.y < 1140 && p.x > -80 && p.x < 2000);
-  for (const p of conf){
-    p.vx *= .985; p.vy = Math.min(p.vy * .985 + .5, 5.5); p.x += p.vx + Math.sin(p.f) * .8; p.y += p.vy; p.r += p.vr; p.f += p.vf;
-    cfx.save(); cfx.translate(p.x, p.y); cfx.rotate(p.r); cfx.scale(1, Math.cos(p.f)); cfx.fillStyle = p.c;
-    if (p.tri){ cfx.beginPath(); cfx.moveTo(-p.s / 2, p.s / 2); cfx.lineTo(p.s / 2, p.s / 2); cfx.lineTo(0, -p.s / 2); cfx.closePath(); cfx.fill(); }
-    else cfx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
-    cfx.restore();
+// The celebration is a rave moment: a riser, the drop (one big flash, the headline slams in, a shockwave), then lasers
+// from the DJ booth, a neon tunnel and a split-color headline, all on the beat: the room's beat when beat sync hears
+// it, otherwise a steady 128 BPM. Flashes stay under three a second (the photosensitivity limit) whatever the tempo.
+const cfx = $('cheerFx').getContext('2d'), cflash = $('cheer').querySelector('.cflash');
+const ghosts = [...$('cheer').querySelectorAll('.cghost')], cheeses = [...$('cheer').querySelectorAll('.ccheese')], hazes = [...$('cheer').querySelectorAll('.chaze')];
+cheeses.forEach(im => { im.src = $('cheese').querySelector('img').src; });   // the Cheese Rave logo, as hype men
+const RCOL = ['#27C6C4', '#FF5AA8', '#FFD62E', '#a06bff'];   // teal, pink, gold, violet
+const RISE = 1150, CX = 960, CY = 420, CBASE = ['rotate(-8deg)', 'rotate(8deg)'];
+const RV = {raf:0, start:0, drop:0, period:60000 / 128, beats:0, lastBeat:0, lastFlash:0, env:0, envAt:0, rings:[], shocks:[],
+  pal:0, pattern:0, nextRing:0, endAt:0, alpha:1};
+function cheerBeat(k){
+  const now = performance.now();
+  if (!cheerOn || RV.endAt || now < RV.drop || now - RV.lastBeat < 250) return;
+  if (BEAT.mode === 'listen' && BEAT.bpm >= 70 && BEAT.bpm <= 190 && now - BEAT.lastPulse < 1500) RV.period = 60000 / BEAT.bpm;
+  RV.lastBeat = now; RV.beats++; RV.env = Math.min(1, k || 1); RV.envAt = now;
+  const down = RV.beats % 4 === 1;
+  RV.rings.push({at:now, col:RCOL[(RV.pal + RV.beats) % 4], sides:down ? 6 : 4, rot:rand(0, 6.28)});
+  if (down){
+    RV.pal++; RV.shocks.push({at:now, col:RCOL[RV.pal % 4]});
+    $('cheerKick').style.color = ['#FFD62E', '#FF5AA8', '#27C6C4'][RV.pal % 3];
+    $('cheerHead').style.setProperty('--glow', RCOL[(RV.pal + 2) % 4]);
+    hazes.forEach((h, i) => h.style.setProperty('--hz', RCOL[(RV.pal + i) % 4]));
   }
-  confRaf = (cheerOn || conf.length) ? requestAnimationFrame(confTick) : 0;
+  if (RV.beats % 8 === 1 && RV.beats > 1) RV.pattern = (RV.pattern + 1) % 4;   // a new laser look every two bars
+  if (RM) return;
+  $('cheerHeadWrap').animate([{transform:`scale(${down ? 1.09 : 1.045})`}, {transform:'none'}], {duration:down ? 340 : 240, easing:'cubic-bezier(.2,.7,.3,1)'});
+  const sp = down ? 34 : 16;
+  ghosts[0].animate([{transform:`translate(${-sp}px,${sp / 4}px)`}, {transform:'translate(-6px,0)'}], {duration:300, easing:'ease-out'});
+  ghosts[1].animate([{transform:`translate(${sp}px,${-sp / 4}px)`}, {transform:'translate(6px,0)'}], {duration:300, easing:'ease-out'});
+  hazes.forEach(h => h.animate([{opacity:down ? .75 : .55}, {opacity:.3}], {duration:down ? 420 : 300, easing:'ease-out', fill:'forwards'}));
+  if (RV.beats % 16 === 0) cheerGlitch();
+  if (now - RV.lastFlash > 360){ RV.lastFlash = now; cflash.animate([{opacity:down ? .16 : .08}, {opacity:0}], {duration:200, easing:'ease-out'}); }
+  cheeses.forEach((im, i) => im.animate([{transform:`translateY(-38px) rotate(${(i ? 1 : -1) * (down ? 16 : 10)}deg) scale(1.07)`}, {transform:CBASE[i]}],
+    {duration:330, easing:'cubic-bezier(.3,.8,.3,1)'}));
+}
+function cheerGlitch(){
+  const o = {duration:170, easing:'steps(3)'};
+  ghosts[0].animate([{transform:'translate(-80px,-12px) skewX(-14deg)'}, {transform:'translate(46px,8px)'}, {transform:'translate(-6px,0)'}], o);
+  ghosts[1].animate([{transform:'translate(80px,12px) skewX(14deg)'}, {transform:'translate(-46px,-8px)'}, {transform:'translate(6px,0)'}], o);
+  $('cheerHead').animate([{transform:'translateX(-16px)', clipPath:'inset(0 0 55% 0)'}, {transform:'translateX(20px)', clipPath:'inset(45% 0 0 0)'},
+    {transform:'none', clipPath:'inset(0 0 0 0)'}], o);
+}
+function poly(g, x, y, r, n, rot){ g.beginPath(); for (let i = 0; i <= n; i++){ const a = rot + i * 2 * Math.PI / n; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } }
+function ray(g, x, y, ang, col, I){   // a laser: wide soft glow, a mid glow, a hot core
+  const x2 = x + Math.cos(ang) * 2600, y2 = y + Math.sin(ang) * 2600;
+  g.strokeStyle = col;
+  for (const [w, al] of [[14, .08], [5, .24], [2, .9]]){ g.globalAlpha = al * I * RV.alpha; g.lineWidth = w; g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke(); }
+}
+const EM = [[200, 1100], [960, 1110], [1720, 1100]], TOPS = [[-20, -20], [1940, -20]];   // emitters: the booth below, the corners above
+function lasers(g, b, I){
+  const U = -Math.PI / 2, P = Math.PI, s = Math.sin, col = i => RCOL[(RV.pal + i) % 4];
+  if (RV.pattern === 0){   // fans sweeping side to side
+    EM.forEach(([x, y], i) => { const c = U + .5 * s(b * P / 4 + i * 2.1); for (let j = -3; j <= 3; j++) ray(g, x, y, c + j * .12, col(i), I); });
+  } else if (RV.pattern === 1){   // scissors: the outside fans cross back and forth
+    const a = U - .25 + .85 * s(b * P / 4);
+    for (let j = -2; j <= 2; j++){ ray(g, EM[0][0], EM[0][1], a + j * .08, col(0), I); ray(g, EM[2][0], EM[2][1], -P - (a + j * .08), col(2), I); }
+    for (const d of [-.06, .06]) ray(g, EM[1][0], EM[1][1], U + d + .15 * s(b * P), col(1), I);
+  } else if (RV.pattern === 2){   // a starburst from the booth, turning, with the sides aimed at the headline
+    const o = .35 * s(b * P / 8);
+    for (let j = 0; j < 15; j++) ray(g, EM[1][0], EM[1][1], -P + .2 + j * (P - .4) / 14 + o, RCOL[(j + RV.pal) % 4], I);
+    [EM[0], EM[2]].forEach(([x, y], i) => { const aim = Math.atan2(CY - y, CX - x); for (const d of [-.05, 0, .05]) ray(g, x, y, aim + d + .1 * s(b * P / 2), col(i + 1), I); });
+  } else {   // crossfire from the top corners, a fan from the booth
+    TOPS.forEach(([x, y], i) => { const c = (i ? 3 * P / 4 : P / 4) + (i ? -1 : 1) * .35 * s(b * P / 4); for (let j = -2; j <= 2; j++) ray(g, x, y, c + j * .1, col(i + 2), I); });
+    for (let j = -3; j <= 3; j++) ray(g, EM[1][0], EM[1][1], U + j * .16 + .2 * s(b * P / 2), col(1), I);
+  }
+}
+function raveFrame(now){
+  const g = cfx;
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, 1920, 1080);
+  RV.alpha = RV.endAt ? Math.max(0, 1 - (now - RV.endAt) / 700) : 1;
+  if (!cheerOn || RV.alpha <= 0){ RV.raf = 0; return; }
+  RV.raf = requestAnimationFrame(raveFrame);
+  // no beat from the room (beat sync off, or the home screen is up): keep a steady one
+  if (now >= RV.drop && !RV.endAt && !(BEAT.mode === 'listen' && scene === 'rave' && now - BEAT.lastPulse < 1500) && now - RV.lastBeat >= RV.period) cheerBeat(.85);
+  const env = RV.env * Math.exp(-(now - RV.envAt) / 240), I = .45 + .55 * env, b = (now - RV.drop) / RV.period;
+  g.globalCompositeOperation = 'lighter';
+  if (now < RV.drop){   // the riser: rings come faster and faster while a line of light stretches across
+    const p = Math.max(0, (now - RV.start) / RISE);
+    if (now >= RV.nextRing){ RV.rings.push({at:now, col:RCOL[RV.rings.length % 4], sides:4, rot:rand(0, 6.28)}); RV.nextRing = now + 260 - 210 * p; }
+    const w = 1920 * p * p;
+    g.strokeStyle = '#fff';
+    for (const [lw, al] of [[30, .08], [10, .25], [3, .95]]){ g.globalAlpha = al * (.4 + .6 * p); g.lineWidth = lw; g.beginPath(); g.moveTo(CX - w / 2, CY); g.lineTo(CX + w / 2, CY); g.stroke(); }
+  }
+  // the neon tunnel: a ring leaves the center on every beat
+  const life = RV.period * 7;
+  RV.rings = RV.rings.filter(r => now - r.at < life);
+  for (const r of RV.rings){
+    const a = (now - r.at) / life, rad = 36 * Math.exp(a * 4.1);
+    g.strokeStyle = r.col; poly(g, CX, CY, rad, r.sides, r.rot + a * .9);
+    g.globalAlpha = (1 - a) * .22 * RV.alpha; g.lineWidth = 14; g.stroke();
+    g.globalAlpha = (1 - a) * .7 * RV.alpha; g.lineWidth = 3; g.stroke();
+  }
+  // shockwaves on the downbeats
+  RV.shocks = RV.shocks.filter(sh => now - sh.at < 800);
+  for (const sh of RV.shocks){ const a = (now - sh.at) / 800; g.strokeStyle = sh.col; g.globalAlpha = (1 - a) * .8 * RV.alpha; g.lineWidth = 10 * (1 - a) + 1;
+    g.beginPath(); g.arc(CX, CY, 80 + a * 1300, 0, 2 * Math.PI); g.stroke(); }
+  if (now >= RV.drop) lasers(g, b, I);
+  g.globalAlpha = 1;
 }
 async function celebrate(c){
   if (cheerOn){ cheerNext = c; if (cheerEnd) cheerEnd(); return; }
   cheerOn = true; postState();
   const el = $('cheer'), head = $('cheerHead'), cin = el.querySelector('.cin');
-  $('cheerKick').textContent = c.kicker || '';
+  el.getAnimations({subtree:true}).filter(a => !(a instanceof CSSAnimation)).forEach(a => a.cancel());
+  $('cheerKick').textContent = c.kicker || ''; $('cheerKick').style.color = '';
   $('cheerSub').textContent = c.sub || '';
+  head.style.setProperty('--glow', '#FFD62E');
   cheerNums(c.race);
   // the headline: letters in words, so a long one wraps between words (two lines at most) instead of shrinking away
   head.innerHTML = ''; head.style.fontSize = '230px'; head.style.whiteSpace = 'nowrap';
@@ -1319,9 +1410,8 @@ async function celebrate(c){
     for (const ch of word){ const sp = document.createElement('span'); sp.textContent = ch; w.appendChild(sp); }
     head.appendChild(w);
   });
-  el.getAnimations({subtree:true}).filter(a => !(a instanceof CSSAnimation)).forEach(a => a.cancel());
   el.classList.add('on');
-  const words = [...head.querySelectorAll('.chw')], letters = [...head.querySelectorAll('.chw span')];
+  const words = [...head.querySelectorAll('.chw')];
   const lineW = size => words.reduce((w, x) => w + x.offsetWidth, 0) + (words.length - 1) * size * .22;
   let size = 230; while (lineW(size) > 1680 && size > 150){ size -= 4; head.style.fontSize = size + 'px'; }
   if (lineW(size) > 1680){   // still too long for one line: two lines
@@ -1329,27 +1419,43 @@ async function celebrate(c){
     const lines = () => new Set(words.map(x => x.offsetTop)).size;
     while ((lines() > 2 || words.some(x => x.offsetWidth > 1700)) && size > 72){ size -= 4; head.style.fontSize = size + 'px'; }
   }
-  const secs = Math.min(90, Math.max(8, +c.secs || 25));
-  if (!RM){
-    el.animate([{opacity:0}, {opacity:1}], {duration:450, easing:'ease-out'});
-    $('flash').style.background = '#FFD62E'; $('flash').animate([{opacity:.5}, {opacity:0}], {duration:1200, easing:'ease-out'});
-    conf = []; volley(-20, 1); volley(1940, -1); setTimeout(() => { if (cheerOn){ volley(-20, 1); volley(1940, -1); } }, 1100);
-    confRain = performance.now() + Math.min(secs, 14) * 1000; if (!confRaf) confRaf = requestAnimationFrame(confTick);
-    $('cheerKick').animate([{opacity:0, letterSpacing:'.8em'}, {opacity:1, letterSpacing:'.32em'}], {duration:1000, delay:250, easing:'ease-out', fill:'backwards'});
-    letters.forEach((sp, k) => sp.animate([
-      {opacity:0, transform:'translateY(-180px) scale(1.5) rotate(-10deg)'},
-      {opacity:1, transform:'translateY(14px) scale(.95) rotate(1deg)', offset:.7}, {opacity:1, transform:'none'}],
-      {duration:720, delay:450 + k * Math.min(60, 900 / letters.length), easing:'cubic-bezier(.2,.8,.3,1.2)', fill:'backwards'}));
-    $('cheerRule').animate([{transform:'scaleX(0)'}, {transform:'scaleX(1)'}], {duration:900, delay:1100, easing:'cubic-bezier(.5,0,.3,1)', fill:'backwards'});
-    $('cheerSub').animate([{opacity:0, transform:'translateY(24px)'}, {opacity:1, transform:'none'}], {duration:700, delay:1500, easing:'ease-out', fill:'backwards'});
-    $('cheerNums').animate([{opacity:0}, {opacity:1}], {duration:700, delay:1900, fill:'backwards'});
+  ghosts.forEach(gh => { gh.innerHTML = head.innerHTML; gh.style.fontSize = head.style.fontSize; gh.style.whiteSpace = head.style.whiteSpace; });
+  const secs = Math.min(90, Math.max(8, +c.secs || 25)), now = performance.now();
+  Object.assign(RV, {start:now, drop:now + (RM ? 0 : RISE), beats:0, lastBeat:0, lastFlash:0, env:0, envAt:now, rings:[], shocks:[],
+    pattern:0, nextRing:now, endAt:0, alpha:1, period:60000 / 128});
+  if (RM){ ghosts.concat(cheeses).forEach(x => { x.style.opacity = .85; }); }
+  else {
+    const D = RISE;
+    el.animate([{opacity:0}, {opacity:1}], {duration:250, easing:'ease-out'});
+    if (!RV.raf) RV.raf = requestAnimationFrame(raveFrame);
+    // the drop: one big flash, the headline slams in, a shockwave, the screen shakes
+    cflash.animate([{opacity:0}, {opacity:.9, offset:.03}, {opacity:0}], {duration:900, delay:D - 20, easing:'ease-out', fill:'backwards'});
+    $('cheerHeadWrap').animate([{opacity:0, transform:'scale(3.2)', filter:'blur(18px)'}, {opacity:1, transform:'scale(.96)', filter:'blur(0px)', offset:.75},
+      {opacity:1, transform:'none', filter:'blur(0px)'}], {duration:420, delay:D, easing:'cubic-bezier(.5,0,.2,1)', fill:'backwards'});
+    ghosts.forEach(gh => gh.animate([{opacity:0}, {opacity:.85}], {duration:300, delay:D + 320, fill:'both'}));
+    cin.animate([{transform:'none'}, {transform:'translate(-16px,9px)'}, {transform:'translate(14px,-7px)'}, {transform:'translate(-9px,5px)'},
+      {transform:'translate(5px,-2px)'}, {transform:'none'}], {duration:460, delay:D + 380});
+    setTimeout(() => { if (cheerOn && !RV.endAt) cheerBeat(1); }, D + 400);
+    $('cheerKick').animate([{opacity:0, letterSpacing:'.9em'}, {opacity:1, letterSpacing:'.32em'}], {duration:900, delay:D + 250, easing:'ease-out', fill:'backwards'});
+    $('cheerRule').animate([{transform:'scaleX(0)'}, {transform:'scaleX(1)'}], {duration:700, delay:D + 500, easing:'cubic-bezier(.5,0,.3,1)', fill:'backwards'});
+    $('cheerSub').animate([{opacity:0, transform:'translateY(24px)'}, {opacity:1, transform:'none'}], {duration:600, delay:D + 800, easing:'ease-out', fill:'backwards'});
+    $('cheerNums').animate([{opacity:0}, {opacity:1}], {duration:600, delay:D + 1100, fill:'backwards'});
+    cheeses.forEach((im, i) => {   // the hype men spin in from below
+      im.animate([{opacity:0}, {opacity:1}], {duration:350, delay:D + 450, fill:'both'});
+      im.animate([{transform:`translateY(420px) rotate(${i ? 60 : -60}deg) scale(.5)`}, {transform:CBASE[i]}], {duration:650, delay:D + 450, easing:'cubic-bezier(.2,.9,.3,1.15)', fill:'backwards'});
+    });
   }
-  await new Promise(res => { cheerEnd = res; setTimeout(res, secs * 1000); });
-  cheerEnd = null;
-  if (!RM) await Promise.all([cin.animate([{opacity:1, transform:'none'}, {opacity:0, transform:'scale(1.06)'}], {duration:600, easing:'ease-in', fill:'forwards'}).finished,
-    el.animate([{opacity:1}, {opacity:0}], {duration:900, easing:'ease-in', fill:'forwards'}).finished]);
+  await new Promise(res => { cheerEnd = res; setTimeout(res, secs * 1000 + (RM ? 0 : RISE)); });
+  cheerEnd = null; RV.endAt = performance.now();
+  // power down: the text collapses to a line like an old TV, the hype men drop, the lasers fade
+  if (!RM) await Promise.all([
+    cin.animate([{transform:'none', filter:'brightness(1)'}, {transform:'scale(1.08,.02)', filter:'brightness(3)', offset:.55}, {transform:'scale(0,.02)', filter:'brightness(3)'}],
+      {duration:560, easing:'ease-in', fill:'forwards'}).finished,
+    ...cheeses.map((im, i) => im.animate([{transform:CBASE[i]}, {transform:`translateY(520px) rotate(${i ? 50 : -50}deg)`}], {duration:520, easing:'ease-in', fill:'forwards'}).finished),
+    el.animate([{opacity:1}, {opacity:1, offset:.55}, {opacity:0}], {duration:900, easing:'ease-in', fill:'forwards'}).finished]);
   el.classList.remove('on'); el.getAnimations({subtree:true}).filter(a => !(a instanceof CSSAnimation)).forEach(a => a.cancel());
-  conf = []; confRain = 0; cheerOn = false; postState();
+  ghosts.concat(cheeses).forEach(x => { x.style.opacity = ''; });
+  cheerOn = false; RV.endAt = 0; RV.rings = []; RV.shocks = []; postState();
   if (cheerNext){ const n = cheerNext; cheerNext = null; celebrate(n); return; }
   pump(); mediaPump();
 }
@@ -1369,7 +1475,7 @@ function blob(x, y, r, c, a){
   g.fillStyle = gr; g.fillRect(x-r, y-r, r*2, r*2);
 }
 function drawBg(now){
-  if (scene === 'show'){ lastT = now; if (!RM) requestAnimationFrame(drawBg); return; }   // nothing to draw behind the skyline
+  if (scene === 'show' || (cheerOn && !RV.endAt && performance.now() > RV.drop + 300)){ lastT = now; if (!RM) requestAnimationFrame(drawBg); return; }   // nothing to draw behind the skyline
   const dt = Math.min(50, now - lastT) / 1000; lastT = now; phase += dt;   // accumulate phase so motion never jitters
   g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, 1920, 1080);
   g.globalCompositeOperation = 'lighter';
@@ -1740,7 +1846,7 @@ function beatLabel(){
 }
 function pulse(k){
   BEAT.env = k; BEAT.at = BEAT.lastPulse = performance.now(); BEAT.pulses++;
-  if (cheerOn && !RM) $('cheerHead').animate([{filter:`brightness(${1 + .45 * k})`}, {filter:'brightness(1)'}], {duration:300, easing:'ease-out'});
+  if (cheerOn){ cheerBeat(k); return; }   // a celebration dances to the room's beat (the board behind is covered)
   if (RM || scene !== 'rave') return;
   const flash = [{filter:`brightness(${1 + .3 * k})`}, {filter:'brightness(1)'}], o = {duration:280, easing:'ease-out'};
   grid.animate(flash, o); board.animate(flash, o); $('top').animate(flash, o); $('band').animate(flash, o);
