@@ -148,6 +148,7 @@ html:fullscreen body{padding-left:0;padding-right:0}   /* full screen: the slide
   left:max(16px,calc(env(safe-area-inset-left,0px) + 10px));display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;
   opacity:0;transition:opacity .3s;pointer-events:none;z-index:20}
 #ctl.on{opacity:1;pointer-events:auto}
+body.idle,body.idle *{cursor:none!important}   /* the pointer hides with the controls when the mouse sits still */
 #ctl button{font:500 12px var(--mono);letter-spacing:.04em;color:var(--white);background:rgba(4,15,17,.9);
   border:1px solid #1f5156;border-radius:4px;padding:8px 10px;cursor:pointer}
 #ctl button[aria-pressed="true"]{border-color:var(--teal);color:var(--teal)}
@@ -1360,20 +1361,22 @@ skyLoop('plane'); skyLoop('iss');
 // ----- Top 10: 10 through 6 build up from the bottom, then a fresh panel for 5 through 1, then back home -----
 const t10 = $('t10'), t10rows = $('t10rows');
 let t10Step = -1;   // -1 closed, 0 header only, 1-5 = #10-#6 shown, 6-10 = #5-#1 shown
+let t10Saved = -1;  // where the list was when another cue cut in (-1: start fresh); 6 brings it back there
 const t10NumAt = step => step >= 1 && step <= 10 ? 11 - step : null;
-function t10Next(){ const s = t10Step + 1; return s === 0 ? 'Open the Top 10' : s <= 10 ? `#${11 - s}: ${TOP10.lines[11 - s]}` : 'Close the list, back to the home screen'; }
+function t10Next(){ if (t10Step < 0 && t10Saved >= 0) return 'Bring the Top 10 back where it left off' + (t10NumAt(t10Saved) ? ' (through #' + t10NumAt(t10Saved) + ')' : '');
+  const s = t10Step + 1; return s === 0 ? 'Open the Top 10' : s <= 10 ? `#${11 - s}: ${TOP10.lines[11 - s]}` : 'Close the list, back to the home screen'; }
 function fitLines(el, max, min, lines){
   let size = max; el.style.fontSize = size + 'px';
   while (el.scrollHeight > el.clientHeight + 2 && size > min){ size -= 1; el.style.fontSize = size + 'px'; }
 }
-function addT10Line(n){
+function addT10Line(n, quiet){
   const row = document.createElement('div'); row.className = 't10r';
   row.innerHTML = '<div class="no"></div><div class="tx"></div>';
   row.querySelector('.no').textContent = n;
   const tx = row.querySelector('.tx'); tx.textContent = TOP10.lines[n] || '';
   t10rows.appendChild(row);
   fitLines(tx, 40, 26);
-  if (RM) return;
+  if (RM || quiet) return;
   row.querySelector('.no').animate([{transform:'scale(1.9)', opacity:0, filter:'brightness(2)'}, {transform:'scale(.94)', opacity:1, offset:.7}, {transform:'scale(1)', filter:'brightness(1)'}], {duration:620, easing:'cubic-bezier(.2,.9,.3,1.2)'});
   tx.animate([{clipPath:'inset(0 100% 0 0)', transform:'translateX(-14px)'}, {clipPath:'inset(0 0 0 0)', transform:'none'}], {duration:700, delay:160, easing:'cubic-bezier(.25,.8,.25,1)', fill:'backwards'});
 }
@@ -1387,17 +1390,25 @@ async function top10(){
   endIntro();
   await sponOff();
   if (ttlIdx >= 0) await hideTitle(true);
+  if (t10Step < 0 && t10Saved >= 0){ reopenT10(); postState(); return; }   // back where it left off; the next press goes on
   t10Step++;
   if (t10Step === 0){
     $('t10title').textContent = TOP10.title; t10rows.innerHTML = '';
     t10.hidden = false; requestAnimationFrame(() => t10.classList.add('on'));
   } else if (t10Step === 6){ await clearT10Rows(); addT10Line(5); }
   else if (t10Step <= 10){ addT10Line(t10NumAt(t10Step)); }
-  else await closeT10();
+  else await closeT10(true);
   postState();
 }
-async function closeT10(){
+function reopenT10(){
+  const s = t10Saved; t10Saved = -1; t10Step = s;
+  $('t10title').textContent = TOP10.title; t10rows.innerHTML = '';
+  for (let n = s <= 5 ? 10 : 5; n >= 11 - s; n--) addT10Line(n, true);   // the lines that were up: #10 down, or #5 down after the fresh panel
+  t10.hidden = false; requestAnimationFrame(() => t10.classList.add('on'));
+}
+async function closeT10(done){
   if (t10Step < 0) return;
+  t10Saved = done ? -1 : t10Step;   // finished: the next press starts fresh; cut off: the next press resumes
   t10.classList.remove('on'); t10Step = -1;
   await sleep(RM ? 0 : 620);
   if (t10Step < 0){ t10.hidden = true; t10rows.innerHTML = ''; }
@@ -1758,7 +1769,9 @@ addEventListener('resize', fitStage);
 
 // ----- operator controls -----
 const ctl = $('ctl'); let ctlT;
-function showCtl(){ ctl.classList.add('on'); clearTimeout(ctlT); ctlT = setTimeout(() => ctl.classList.remove('on'), 4000); }
+function showCtl(){ ctl.classList.add('on'); document.body.classList.remove('idle'); clearTimeout(ctlT);
+  ctlT = setTimeout(() => { ctl.classList.remove('on'); document.body.classList.add('idle'); }, 4000); }
+ctlT = setTimeout(() => document.body.classList.add('idle'), 4000);
 addEventListener('pointermove', showCtl); addEventListener('pointerdown', showCtl);
 $('bCall').hidden = LIVE;   // live calls come from the feed
 const act = {

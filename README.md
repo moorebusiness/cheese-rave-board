@@ -9,7 +9,7 @@ Projector visuals for **The Election Night Show and Cheese Rave** (Tower Theatre
 3. Press **B** once and allow the microphone, so the rave board pulses to the music. Do this before doors: the prompt shows on the projector.
 4. On the rave board, the status chip at the top should read **LIVE · UPDATED** with a recent time.
 
-Nothing switches on its own. The page opens on the home screen; press **R** for the rave board.
+The mouse pointer hides after 4 seconds without movement. Nothing switches on its own. The page opens on the home screen; press **R** for the rave board.
 
 ## Keys
 
@@ -19,7 +19,7 @@ Nothing switches on its own. The page opens on the home screen; press **R** for 
 | 1 / 2 / 3 | Sponsors 1 / Sponsors 2 / Food sponsors |
 | 4 | John Shack |
 | 5 | Wait, Wait...I know this! |
-| 6 | Top 10 (each press adds a line) |
+| 6 | Top 10 (each press adds a line; if another cue cuts in, 6 brings it back where it left off) |
 | 7 / 8 | AJ Griffin / Erika Lucas |
 | 9 | Into the Cheese Rave: the sky turns turquoise, the moon turns pink, the cheese rises from behind the buildings. Press R from here to fade into the rave board |
 | L | Sponsor loop (slides 1–3, 12 seconds each) |
