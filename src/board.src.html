@@ -472,17 +472,21 @@ const CALLED_WEIGHT = 0.4;   // called races stay in the rotation, just less oft
 const MAX_QUEUED_CALLS = 5;  // a burst bigger than this gets gold outlines without the animation
 
 // ----- races -----
-let RACES = BAKED.map(b => ({...b, cands: b.cands.map(c => ({n:c.n, p:c.p, v:0, pct:null, win:false})), rep:0, called:null, fin:false, seen:false, has:false}));
+let RACES = BAKED.map(b => ({...b, cands: b.cands.map(c => ({n:c.n, p:c.p, v:0, pct:null, win:false})), rep:0, called:null, fin:false, seen:false, has:false,
+  pref: b.cands.map(c => c.n)}));   // pref: the matchup on file, shown until votes arrive
 let BY_ID = {};
 const reindex = () => { BY_ID = Object.fromEntries(RACES.map(r => [r.id, r])); };
 reindex();
 const rank = c => c.p === 'Q' ? (c.n === 'YES' ? 0 : 1) : ({D:0, R:1})[c.p] ?? 2;
-// The two candidates a tile shows: top two by votes, ordered Democrat then Republican (or Yes then No).
+// The two candidates a tile shows: top two by votes, ordered Democrat then Republican (or Yes then No). Before any
+// votes, the matchup on file comes first (so Nebraska shows Osborn, not the first minor-party name on the ballot).
 function top2(r){
   const c = r.cands.slice();
   const any = c.some(x => x.v > 0);
-  const pair = (any ? c.sort((a, b) => b.v - a.v) : c.sort((a, b) => rank(a) - rank(b))).slice(0, 2);
-  return pair.sort((a, b) => rank(a) - rank(b));
+  const pi = x => { const i = (r.pref || []).indexOf(x.n); return i < 0 ? 99 : i; };
+  const pair = (any ? c.sort((a, b) => b.v - a.v) : c.sort((a, b) => pi(a) - pi(b) || rank(a) - rank(b))).slice(0, 2);
+  const side = c => c.p === 'Q' ? rank(c) : c.p === 'D' ? 0 : c.p === 'R' ? 2 : 1;   // Republicans on the right, an independent on the left
+  return pair.sort((a, b) => side(a) - side(b));
 }
 
 // ----- sample data engine (only in sample mode) -----
@@ -1992,7 +1996,7 @@ window.cheeseBoard = {act: (a, arg) => act[a] && act[a](arg), seats: () => ({our
   media: () => ({code:!!PUSH_CODE, connected:MEDIA.connected, paused:MEDIA.paused, waiting:MEDIA.queue.length, showing:MEDIA.now && (MEDIA.now.video ? 'video' : 'photo'), shown:MEDIA.shown, on:mediaOn, label:mediaLabel(),
     archive:{on:!!ARCHIVE, saved:ARCH.saved, missed:ARCH.missed, todo:ARCH.todo.length, error:ARCH.error}}),
   source: () => ({src:SRC, forced:forceEH, failCount, ehOk:ehOk && ehOk.toISOString(), ehFails, ehApplied, credit:document.querySelector('.credit').textContent}),
-  beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), cheer: c => celebrate(c), race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
+  beat: () => ({mode:BEAT.mode, label:beatLabel(), bpm:Math.round(BEAT.bpm * 10) / 10, onsets:BEAT.onsets, pulses:BEAT.pulses, audio:BEAT.ctx && BEAT.ctx.state}), cheer: c => celebrate(c), pair: id => BY_ID[id] ? top2(BY_ID[id]).map(c => c.n) : null, race: id => { const r = BY_ID[id]; return r ? {label:r.label, rep:r.rep, called:r.called, cands:r.cands.map(c => c.n + ' ' + c.v)} : null; }};
 
 // ----- boot -----
 fitStage(); clock(); setInterval(clock, 10000);
