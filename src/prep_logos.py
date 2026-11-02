@@ -12,7 +12,8 @@ L = {'dfde2996': ('gazette', 'Oklahoma Gazette and UBS', (900, 600)), '0a0d362d'
      '68ac2b96': ('fuzzys', 'Fuzzy’s Taco Shop', (640, 420)), '848ba4e4': ('tacoempire', 'Taco Empire', (640, 420)),
      'cac0847d': ('eastside', 'Eastside Pizza House', (640, 420)), '99039978': ('stonehorse', 'Stonehorse Café & Market', (640, 420)),
      'f20618a9': ('empireslice', 'Empire Slice House', (640, 420)),
-     'c1a1de12': ('shortle', 'Allyson Shortle', (640, 420))}   # added Nov. 2
+     'c1a1de12': ('shortle', 'Allyson Shortle', (640, 420)),   # added Nov. 2
+     '8043996c': ('blacktop', 'Blacktop BBQ', (640, 420))}   # added Nov. 2
 meta = {}
 for f, (key, alt, box) in L.items():
     im = Image.open(src + f + '-image.png').convert('RGBA')
