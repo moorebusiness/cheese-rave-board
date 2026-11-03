@@ -183,6 +183,23 @@ body.idle,body.idle *{cursor:none!important}   /* the pointer hides with the con
   background:rgba(3,8,20,.66);backdrop-filter:blur(8px);box-shadow:0 30px 90px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,214,46,.22);
   display:grid;grid-template-rows:auto 1fr;gap:16px;opacity:0;transform:translateY(18px) scale(.985);transition:opacity .6s ease,transform .6s ease}
 #t10.on{opacity:1;transform:none}
+/* the Top 10's opening: searchlights behind the skyline, a split-flap countdown, then TOP 10 slams in */
+#t10lights{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0}
+#t10lights .dim{position:absolute;inset:0;background:rgba(2,4,14,.55)}
+#t10lights i{position:absolute;top:-700px;width:170px;height:1520px;margin-left:-85px;transform-origin:50% 100%;will-change:transform,opacity;
+  clip-path:polygon(50% 100%,0 0,100% 0);background:linear-gradient(to top,rgba(255,244,205,.6),rgba(255,232,170,.18) 60%,rgba(255,232,170,0))}
+#t10intro{position:absolute;inset:0;pointer-events:none}
+#t10intro .cdw{position:absolute;left:1070px;top:250px;width:380px;height:330px}
+#cdCard{position:relative;width:100%;height:100%;border-radius:18px;display:grid;place-items:center;transform-origin:50% 50%;
+  background:linear-gradient(#0f3c42,#082c31 49.6%,#06242a 50.4%,#0a3238);box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 0 0 3px rgba(255,214,46,.4)}
+#cdCard::after{content:"";position:absolute;left:0;right:0;top:50%;height:4px;margin-top:-2px;background:rgba(0,0,0,.5)}
+#cdNum{font:900 250px/1 var(--display);color:var(--gold);text-shadow:0 0 40px rgba(255,214,46,.45);font-variant-numeric:tabular-nums}
+#t10intro .slamw{position:absolute;left:660px;width:1200px;top:240px;text-align:center}
+#t10Slam{display:inline-block;font:900 300px/.9 var(--display);color:var(--gold);letter-spacing:.01em;transform-origin:50% 50%;
+  text-shadow:0 0 60px rgba(255,214,46,.55),0 12px 40px rgba(0,0,0,.6)}
+#t10Sub{display:inline-block;margin-top:24px;padding:10px 20px;border-radius:6px;background:rgba(2,6,16,.72);font:600 24px var(--mono);letter-spacing:.2em;
+  color:var(--white);text-transform:uppercase;white-space:nowrap}
+#t10flash{position:absolute;inset:0;background:#fff;opacity:0}
 .t10h{display:flex;align-items:baseline;gap:20px;border-bottom:2px solid rgba(255,214,46,.35);padding-bottom:12px;min-width:0}
 .t10h b{font:900 62px/1 var(--display);color:var(--gold);letter-spacing:.01em;white-space:nowrap}
 .t10h span{font:600 19px var(--mono);letter-spacing:.16em;color:var(--pale);white-space:nowrap;overflow:hidden;min-width:0}
@@ -302,6 +319,7 @@ body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
     <div id="sky" aria-label="Home screen">
       <img class="ly" id="lySky" alt="" src="/*__SKYBG__*/">
       <canvas id="skyfx" width="1920" height="1080" aria-hidden="true"></canvas>
+      <div id="t10lights" aria-hidden="true"><div class="dim"></div><i></i><i></i><i></i></div>
       <img class="ly" id="lyCity" alt="" src="/*__SKYLINE__*/">
       <img class="ly" id="lyTurq" alt="" src="/*__TURQ__*/">
       <div id="cheese"><img alt="Cheese Rave for Democracy" src="/*__CHEESE__*/"></div>
@@ -309,6 +327,7 @@ body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
       <img class="ly" id="lyMoon" alt="The Election Night Show at Tower Theatre" src="/*__MOON__*/">
       <img class="ly" id="lyMoonPink" alt="" src="/*__MOONPINK__*/">
       <section id="t10" hidden aria-label="Top 10 list"><div class="t10h"><b>TOP 10</b><span id="t10title"></span></div><div id="t10rows"></div></section>
+      <div id="t10intro" hidden aria-hidden="true"><div class="cdw"><div id="cdCard"><b id="cdNum">10</b></div></div><div class="slamw"><div id="t10Slam">TOP 10</div><div id="t10Sub"></div></div><div id="t10flash"></div></div>
       <div id="ttl" hidden><div class="kick" id="ttlKick"></div><div class="big" id="ttlBig"></div><div class="rule" id="ttlRule"></div><div class="streak" id="ttlStreak"></div><div class="shine" id="ttlShine"></div></div>
     </div>
     <section id="spon" hidden aria-label="Our sponsors">
@@ -1583,17 +1602,94 @@ async function clearT10Rows(){
 async function top10(){
   if (scene !== 'show') setScene('show');
   endIntro();
+  if (t10Intro){ t10Intro.finish(); postState(); return; }   // a press during the opening skips to the panel
   await sponOff();
   if (ttlIdx >= 0) await hideTitle(true);
   if (t10Step < 0 && t10Saved >= 0){ reopenT10(); postState(); return; }   // back where it left off; the next press goes on
   t10Step++;
   if (t10Step === 0){
     $('t10title').textContent = TOP10.title; t10rows.innerHTML = '';
-    t10.hidden = false; requestAnimationFrame(() => t10.classList.add('on'));
+    t10.hidden = false;
+    if (RM) requestAnimationFrame(() => t10.classList.add('on')); else playT10Intro();   // the panel opens as the opening lands
   } else if (t10Step === 6){ await clearT10Rows(); addT10Line(5); }
   else if (t10Step <= 10){ addT10Line(t10NumAt(t10Step)); }
   else await closeT10(true);
   postState();
+}
+// The Top 10's opening (first press of 6), about 12 seconds while the band plays: the sky dims and searchlights sweep
+// up from behind the skyline, a split-flap tile counts 10 down to 1 faster and faster, TOP 10 slams in with the list's
+// title, then flies into the panel's header as the panel opens, ready for #10. Pressing 6 again skips to the panel.
+let t10Intro = null;
+const t10L = $('t10lights'), t10Beams = [...t10L.querySelectorAll('i')];
+function playT10Intro(){
+  const box = $('t10intro'), card = $('cdCard'), num = $('cdNum'), slam = $('t10Slam'), sub = $('t10Sub'), flash = $('t10flash');
+  const anims = [], timers = [];
+  const A = (el, kf, o) => { const a = el.animate(kf, o); anims.push(a); return a; };
+  const S = {alive:true, raf:0, env:0, envAt:0, speed:.5, phase:0, last:performance.now(), endAt:0, t0:performance.now()};
+  const EMS = [[430, 0], [1010, 2.1], [1580, 4.2]];   // searchlights behind the buildings (x, phase)
+  t10Beams.forEach((b, i) => { b.style.left = EMS[i][0] + 'px'; });
+  const bump = k => { S.env = k; S.envAt = performance.now(); };
+  function frame(now){   // only transforms and opacity change: the graphics hardware does the work
+    const dt = Math.min(.05, (now - S.last) / 1000); S.last = now; S.phase += dt * S.speed;
+    const fade = S.endAt ? Math.max(0, 1 - (now - S.endAt) / 1100) : 1;
+    if (fade <= 0 || (!S.alive && !S.endAt)){ t10L.style.opacity = 0; S.raf = 0; return; }
+    S.raf = requestAnimationFrame(frame);
+    t10L.style.opacity = Math.min(1, (now - S.t0) / 800) * fade;
+    const I = .5 + .5 * S.env * Math.exp(-(now - S.envAt) / 260);
+    t10Beams.forEach((b, i) => { b.style.transform = `rotate(${(.55 * Math.sin(S.phase + EMS[i][1])).toFixed(4)}rad)`; b.style.opacity = I.toFixed(3); });
+  }
+  function stop(){ S.alive = false; timers.forEach(clearTimeout); anims.forEach(a => a.cancel()); box.hidden = true; t10Intro = null; }
+  const intro = t10Intro = {
+    finish(){ stop(); S.endAt = 0; t10L.style.opacity = 0; t10.classList.add('on'); },   // a press of 6 mid-intro: straight to the panel
+    abort(){ stop(); S.endAt = 0; t10L.style.opacity = 0; },                             // another cue took over
+  };
+  num.textContent = '10'; sub.textContent = TOP10.title;
+  [card, slam, sub].forEach(el => { el.style.opacity = 0; });
+  box.hidden = false;
+  S.raf = requestAnimationFrame(frame);
+  // every step on a fixed clock from the first press, so a slow computer doesn't stretch the opening (about 11.5 s)
+  const at = (ms, fn) => timers.push(setTimeout(() => { if (S.alive) fn(); }, ms));
+  const FLIP = 240, CARD = 1800;
+  let t = CARD + 450;
+  at(CARD, () => { card.style.opacity = 1; bump(1);
+    A(card, [{transform:'perspective(1000px) rotateX(-90deg) scale(.6)', opacity:0}, {transform:'none', opacity:1}], {duration:450, easing:'cubic-bezier(.2,.8,.3,1.2)'}); });
+  for (let n = 9, gap = 640; n >= 1; n--, gap = Math.max(110, gap * .8)){
+    t += gap;
+    const nn = n;
+    at(t, () => { S.speed = Math.min(3.2, S.speed + .3);
+      A(card, [{transform:'perspective(1000px) rotateX(0deg)'}, {transform:'perspective(1000px) rotateX(-90deg)'}], {duration:FLIP / 2, easing:'ease-in', fill:'forwards'}); });
+    at(t + FLIP / 2, () => { num.textContent = nn; bump(nn === 1 ? 1 : .7);
+      A(card, [{transform:'perspective(1000px) rotateX(90deg)'}, {transform:'perspective(1000px) rotateX(0deg)'}], {duration:FLIP / 2, easing:'ease-out', fill:'forwards'}); });
+    t += FLIP;
+  }
+  t += 550;
+  at(t, () => A(card, [{transform:'none', opacity:1}, {transform:'perspective(1000px) rotateX(90deg) scale(1.2)', opacity:0}], {duration:220, easing:'ease-in', fill:'forwards'}));
+  const SLAM = t + 220;
+  at(SLAM, () => {   // the slam
+    slam.style.opacity = 1; S.speed = .7; bump(1);
+    A(flash, [{opacity:.8}, {opacity:0}], {duration:750, easing:'ease-out'});
+    A(slam, [{transform:'scale(3)', filter:'blur(14px)', opacity:0}, {transform:'scale(.95)', filter:'blur(0px)', opacity:1, offset:.75}, {transform:'none', filter:'blur(0px)', opacity:1}],
+      {duration:420, easing:'cubic-bezier(.5,0,.2,1)'});
+  });
+  at(SLAM + 420, () => {
+    A(box, [{transform:'none'}, {transform:'translate(-12px,7px)'}, {transform:'translate(10px,-5px)'}, {transform:'translate(-5px,3px)'}, {transform:'none'}], {duration:380});
+    sub.style.opacity = 1;
+    A(sub, [{opacity:0, letterSpacing:'.6em'}, {opacity:1, letterSpacing:'.2em'}], {duration:900, easing:'ease-out'});
+  });
+  const LAND = SLAM + 420 + 2300;
+  at(LAND, () => {   // TOP 10 flies into the panel's header as the panel opens
+    const hb = t10.querySelector('.t10h b'), tb = stageBox(hb), sb = stageBox(slam);
+    const k = parseFloat(getComputedStyle(hb).fontSize) / parseFloat(getComputedStyle(slam).fontSize);
+    const dx = tb.x + tb.w / 2 - (sb.x + sb.w / 2), dy = tb.y + tb.h / 2 - (sb.y + sb.h / 2) - 9;
+    t10.classList.add('on'); S.endAt = performance.now();
+    A(sub, [{opacity:1}, {opacity:0}], {duration:400, fill:'forwards'});
+    A(slam, [{transform:'none', opacity:1}, {transform:`translate(${dx}px,${dy}px) scale(${k})`, opacity:1, offset:.82}, {transform:`translate(${dx}px,${dy}px) scale(${k})`, opacity:0}],
+      {duration:800, easing:'cubic-bezier(.6,0,.2,1)', fill:'forwards'});
+  });
+  at(LAND + 800, () => {   // done: the lights finish fading on their own
+    if (t10Intro !== intro) return;
+    S.alive = false; timers.forEach(clearTimeout); anims.forEach(a => a.cancel()); box.hidden = true; t10Intro = null; postState();
+  });
 }
 function reopenT10(){
   const s = t10Saved; t10Saved = -1; t10Step = s;
@@ -1603,7 +1699,8 @@ function reopenT10(){
 }
 async function closeT10(done){
   if (t10Step < 0) return;
-  t10Saved = done ? -1 : t10Step;   // finished: the next press starts fresh; cut off: the next press resumes
+  if (t10Intro) t10Intro.abort();
+  t10Saved = done || t10Step === 0 ? -1 : t10Step;   // finished, or nothing read yet: the next press starts fresh (opening and all); cut off: it resumes
   t10.classList.remove('on'); t10Step = -1;
   await sleep(RM ? 0 : 620);
   if (t10Step < 0){ t10.hidden = true; t10rows.innerHTML = ''; }

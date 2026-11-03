@@ -19,7 +19,7 @@ The mouse pointer hides after 4 seconds without movement. Nothing switches on it
 | 1 / 2 / 3 | Sponsors 1 / Sponsors 2 / Food sponsors |
 | 4 | John Shack |
 | 5 | Wait, Wait...I know this! |
-| 6 | Top 10 (each press adds a line; if another cue cuts in, 6 brings it back where it left off) |
+| 6 | Top 10. The first press plays a 12-second opening (searchlights, a 10-to-1 countdown, TOP 10 slams in); press 6 again to skip it. Then each press adds a line; if another cue cuts in, 6 brings the list back where it left off |
 | 7 / 8 | AJ Griffin / Erika Lucas |
 | 9 | Into the Cheese Rave: the sky turns turquoise, the moon turns pink, the cheese rises from behind the buildings. Press R from here to fade into the rave board |
 | L | Sponsor loop (slides 1–3, 12 seconds each) |
