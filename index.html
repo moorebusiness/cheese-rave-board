@@ -508,19 +508,19 @@ const SCENE_Q = new URLSearchParams(location.search).get('scene');
 let scene = SCENE_Q === 'show' || SCENE_Q === 'rave' ? SCENE_Q : (MODE === 'rehearse' || HASH === 'rave' ? 'rave' : 'show');
 
 // ===== Show content: edit these =====
-// Top 10 list. Andy is still writing it: replace the title and lines when it's final.
+// Top 10 list (final, Nov. 3).
 const TOP10 = {
-  title: 'THINGS OVERHEARD WHILE IN LINE TO VOTE TODAY IN OKLAHOMA',
-  lines: {10:'I\u2019d like to file an initiative petition to keep Wemby south of the Red River.',
-          9:'If the Cheese Rave doesn\u2019t have gouda, I\u2019m not going.',
-          8:'I loaned my campaign $12.8 million and all I got was this lousy t-\u2060shirt.',
-          7:'If they\u2019re going to gerrymander OKC, we should at least get an early voting site in each congressional district.',
-          6:'\u2018Broke and Woke\u2019 is basically two-\u2060thirds of my personality these days.',
-          5:'Dirty Smelter was my nickname in high school. Not as cool as Talafreako.',
-          4:'Which box do I check to make the text messages stop?',
-          3:'Two words: Banana cleaver',
-          2:'Who wants to go to the Cheesecake Factory after this?',
-          1:'I\u2019m voting today because I know that decisions are made by those who\u2026SHOW UP!'},
+  title: 'THINGS OVERHEARD TODAY WHILE WAITING IN LINE TO VOTE',
+  lines: {10:'I get all my news from social media, and I have it on good authority that Saddam Hussein is opening a Cheesecake Factory at Quail Springs Mall.',
+          9:'Which one cuts the bananas? I like the guy who cuts the bananas.',
+          8:'I\u2019m a one-\u2060issue voter, and my issue is\u2026 Buc-\u2060ee\u2019s.',
+          7:'If the Cheese Rave doesn\u2019t have Gouda, I\u2019m not going.',
+          6:'I like to let the absolute craziest people in the world make the decisions for me in the primaries, and then I show up at the very end. What could go wrong?',
+          5:'I\u2019m in a one-\u2060sided situationship with six candidates who each text me 16 times a day.',
+          4:'Smelter? I barely know her.',
+          3:'In Russ We Trust.',
+          2:'Hey, this should turn out fine; everyone I know always makes good decisions\u2026 Wait, they\u2019re letting the rest of the state vote? Oh crap, we\u2019re screwed!',
+          1:'I\u2019m voting today because the decisions are made by those who show up!'},
 };
 // Title slides for segments and guests. Which number key shows each one is set in CUES below.
 const TITLES = [
