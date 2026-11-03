@@ -21,7 +21,7 @@ The mouse pointer hides after 4 seconds without movement. Nothing switches on it
 | 5 | Wait, Wait...I know this! |
 | 6 | Top 10. The first press plays a 12-second opening (searchlights, a 10-to-1 countdown, TOP 10 slams in); press 6 again to skip it. Then each press adds a line; if another cue cuts in, 6 brings the list back where it left off |
 | 7 / 8 | AJ Griffin / Erika Lucas |
-| 9 | Into the Cheese Rave: the sky turns turquoise, the moon turns pink, the cheese rises from behind the buildings. Press R from here to fade into the rave board |
+| 9 | Into the Cheese Rave: the sky turns turquoise, the moon turns pink and sets behind the buildings, and the cheese rises in its place. Press R from here to fade into the rave board; H plays it backwards |
 | L | Sponsor loop (slides 1–3, 12 seconds each) |
 | P / I | Send an airplane / the ISS across |
 

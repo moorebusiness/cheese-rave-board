@@ -163,8 +163,8 @@ body.idle,body.idle *{cursor:none!important}   /* the pointer hides with the con
 #lyCity{left:0;top:379px;width:1920px;height:701px}
 #lyMoon{left:218px;top:99px;width:378px;height:377px;animation:moonbob 14s ease-in-out infinite alternate}
 @keyframes moonbob{from{transform:translateY(-5px)}to{transform:translateY(5px)}}
-/* cue 9, into the Cheese Rave: the home screen turns turquoise, the moon turns pink, and the cheese rises from behind
-   the buildings (it sits between the turquoise photo and a cutout of the same skyline) */
+/* cue 9, into the Cheese Rave: the home screen turns turquoise and the moon pink, the moon sets behind the buildings, and the
+   cheese rises in its place (the pink moon and the cheese sit between the turquoise photo and a cutout of the same skyline) */
 #lyTurq,#lyTurqCity,#lyMoonPink{opacity:0;transition:opacity 2.4s ease}
 #lyMoon{transition:opacity 2.4s ease}
 #lyTurq{left:0;top:0;width:1920px;height:1080px}
@@ -172,7 +172,7 @@ body.idle,body.idle *{cursor:none!important}   /* the pointer hides with the con
 #lyMoonPink{left:175px;top:62px;width:452px;height:452px;animation:moonbob 14s ease-in-out infinite alternate}
 #sky.turq #lyTurq,#sky.turq #lyTurqCity,#sky.turq #lyMoonPink{opacity:1}
 #sky.turq #lyMoon{opacity:0}
-#cheese{position:absolute;left:1345px;top:140px;width:532px;height:560px;visibility:hidden}
+#cheese{position:absolute;left:135px;top:24px;width:532px;height:560px;visibility:hidden}
 #cheese img{position:relative;display:block;width:100%;height:100%;animation:cheesebob 7s ease-in-out infinite alternate}
 #cheese::before{content:"";position:absolute;inset:-110px;background:radial-gradient(closest-side,rgba(255,214,46,.42),rgba(255,214,46,0));
   opacity:0;transition:opacity 1.4s ease}
@@ -322,10 +322,10 @@ body.show-mode #ctl .rv,body:not(.show-mode) #ctl .sh{display:none}
       <div id="t10lights" aria-hidden="true"><div class="dim"></div><i></i><i></i><i></i></div>
       <img class="ly" id="lyCity" alt="" src="/*__SKYLINE__*/">
       <img class="ly" id="lyTurq" alt="" src="/*__TURQ__*/">
+      <img class="ly" id="lyMoonPink" alt="" src="/*__MOONPINK__*/">
       <div id="cheese"><img alt="Cheese Rave for Democracy" src="/*__CHEESE__*/"></div>
       <img class="ly" id="lyTurqCity" alt="" src="/*__TURQCITY__*/">
       <img class="ly" id="lyMoon" alt="The Election Night Show at Tower Theatre" src="/*__MOON__*/">
-      <img class="ly" id="lyMoonPink" alt="" src="/*__MOONPINK__*/">
       <section id="t10" hidden aria-label="Top 10 list"><div class="t10h"><b>TOP 10</b><span id="t10title"></span></div><div id="t10rows"></div></section>
       <div id="t10intro" hidden aria-hidden="true"><div class="cdw"><div id="cdCard"><b id="cdNum">10</b></div></div><div class="slamw"><div id="t10Slam">TOP 10</div><div id="t10Sub"></div></div><div id="t10flash"></div></div>
       <div id="ttl" hidden><div class="kick" id="ttlKick"></div><div class="big" id="ttlBig"></div><div class="rule" id="ttlRule"></div><div class="streak" id="ttlStreak"></div><div class="shine" id="ttlShine"></div></div>
@@ -1752,34 +1752,56 @@ async function goHome(){
   postState();
 }
 
-// ----- cue 9, into the Cheese Rave: the home screen fades to turquoise with the pink moon, then the cheese rises from
-// behind the buildings and settles in the sky. R from here fades straight into the rave board; H puts the cheese away.
-const skyEl = $('sky'), cheese = $('cheese');
-let introOn = false, introGo = 0;
+// ----- cue 9, into the Cheese Rave: the home screen fades to turquoise with the pink moon, the moon sets behind the
+// buildings, and the cheese rises in its place. R from here fades straight into the rave board; H plays it backwards.
+const skyEl = $('sky'), cheese = $('cheese'), moonPink = $('lyMoonPink');
+const MOON_SET = 790, CHEESE_UNDER = 820;   // px down to be fully behind the skyline (its solid ground starts at y 831)
+let introOn = false, introGo = 0, moonSet = null;
+function introReset(){   // everything back where the home screen keeps it
+  cheese.getAnimations().forEach(a => a.cancel()); cheese.classList.remove('lit'); cheese.style.visibility = 'hidden';
+  if (moonSet){ moonSet.cancel(); moonSet = null; }
+  moonPink.style.visibility = '';
+}
 async function raveIntro(){
   if (scene !== 'show') setScene('show');
   const already = skyEl.classList.contains('turq');
   await Promise.all([closeT10(), hideTitle(true), sponOff()]);
   if (introOn) return;
   introOn = true; const go = ++introGo;
-  cheese.getAnimations().forEach(a => a.cancel()); cheese.classList.remove('lit'); cheese.style.visibility = 'hidden';
+  introReset();
   skyEl.classList.add('turq'); postState();
-  if (RM){ cheese.style.visibility = 'visible'; cheese.classList.add('lit'); return; }
-  await sleep(already ? 200 : 2500); if (go !== introGo) return;   // the colors first, then the cheese
+  if (RM){ moonPink.style.visibility = 'hidden'; cheese.style.visibility = 'visible'; cheese.classList.add('lit'); return; }
+  await sleep(already ? 300 : 2400); if (go !== introGo) return;   // the colors first
+  // the moon lifts a hair, then drops behind the buildings, words and all
+  moonSet = moonPink.animate([{transform:'translateY(0)', easing:'cubic-bezier(.3,0,.5,1)'},
+    {transform:'translateY(-18px)', offset:.18, easing:'cubic-bezier(.55,0,.9,.45)'}, {transform:`translateY(${MOON_SET}px)`}],
+    {duration:1500, fill:'forwards'});
+  await sleep(1250); if (go !== introGo) return;   // the cheese starts up as the moon goes under
   cheese.style.visibility = 'visible';
-  await cheese.animate([{transform:'translateY(740px)'}, {transform:'translateY(-28px)', offset:.8}, {transform:'translateY(7px)', offset:.92}, {transform:'none'}],
-    {duration:3400, easing:'cubic-bezier(.25,.45,.4,1)', fill:'backwards'}).finished.catch(() => {});
+  await cheese.animate([{transform:`translateY(${CHEESE_UNDER}px)`}, {transform:'translateY(-28px)', offset:.8}, {transform:'translateY(7px)', offset:.92}, {transform:'none'}],
+    {duration:3200, easing:'cubic-bezier(.25,.45,.4,1)', fill:'backwards'}).finished.catch(() => {});
   if (go === introGo) cheese.classList.add('lit');
 }
 async function endIntro(fast){
   if (!introOn) return;
   introOn = false; const go = ++introGo;
   cheese.classList.remove('lit');
-  if (!fast && !RM && cheese.style.visibility === 'visible')   // the cheese sinks back behind the buildings, then the colors go
-    await cheese.animate([{transform:'none'}, {transform:'translateY(740px)'}], {duration:900, easing:'cubic-bezier(.5,0,.75,0)', fill:'forwards'}).finished.catch(() => {});
-  if (go !== introGo) return;
-  cheese.style.visibility = 'hidden'; cheese.getAnimations().forEach(a => a.cancel());
-  skyEl.classList.remove('turq'); postState();
+  if (!fast && !RM){
+    if (cheese.style.visibility === 'visible')   // the cheese sinks back behind the buildings...
+      await cheese.animate([{transform:getComputedStyle(cheese).transform}, {transform:`translateY(${CHEESE_UNDER}px)`}],
+        {duration:900, easing:'cubic-bezier(.5,0,.75,0)', fill:'forwards'}).finished.catch(() => {});
+    if (go !== introGo) return;
+    cheese.style.visibility = 'hidden'; cheese.getAnimations().forEach(a => a.cancel());
+    if (moonSet){   // ...the moon comes back up from wherever it got to...
+      const from = getComputedStyle(moonPink).transform, rise = moonPink.animate([{transform:from === 'none' ? 'translateY(0)' : from, easing:'cubic-bezier(.2,.6,.35,1)'},
+        {transform:'translateY(-14px)', offset:.82, easing:'ease-in-out'}, {transform:'translateY(0)'}], {duration:1300});
+      moonSet.cancel(); moonSet = null;
+      await rise.finished.catch(() => {});
+      if (go !== introGo) return;
+    }
+  }
+  introReset();
+  skyEl.classList.remove('turq'); postState();   // ...then the colors go
 }
 
 // ----- sponsor slides: one press per slide, a final press closes them; or a loop that holds each slide SPON_SECS -----
