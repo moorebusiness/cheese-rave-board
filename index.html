@@ -631,7 +631,7 @@ const QUERIES = MODE === 'rehearse' ? {ok:'&province=OK'}
   : {ok:'&province=OK', sen:'&type=US%20Senate', gov:'&type=Governor', house:'&type=House%20of%20Representatives'};
 let okBuilt = false, failCount = 0, lastOk = null, cycle = 0, testSeen = false;
 async function getRaces(extra){
-  const ac = new AbortController(), to = setTimeout(() => ac.abort(), 25000);
+  const ac = new AbortController(), to = setTimeout(() => ac.abort(), 60000);   // civicAPI was taking 11-25 s a request on election night
   try {
     const res = await fetch(`${API}?startDate=${DATE}&endDate=${DATE}&limit=2000${extra}`, {signal:ac.signal});
     if (!res.ok) throw new Error('HTTP ' + res.status);
