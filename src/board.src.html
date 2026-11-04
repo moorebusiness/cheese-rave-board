@@ -611,9 +611,9 @@ function buildOklahoma(list){
 const RESULTS_FROM = Date.parse('2026-11-03T17:00:00-06:00');   // 6 p.m. Eastern: Indiana and Kentucky close first
 const tooEarly = () => MODE === 'live' && Date.now() < RESULTS_FROM;
 const scrub = x => ({...x, percent_reporting:0, candidates:(x.candidates || []).map(c => ({...c, votes:0, percent:null, winner:false}))});
-function ingest(list){
+function ingest(list, full){   // full: this is the whole Oklahoma list (the national lists carry a few Oklahoma races too)
   if (tooEarly()) list = list.map(x => x.province === 'US' ? x : scrub(x));
-  if (!okBuilt && buildOklahoma(list)) reflipAll();
+  if (!okBuilt && full && buildOklahoma(list)) reflipAll();
   const byCiv = {};
   RACES.forEach(r => { if (r.civ) byCiv[r.civ] = r; else if (r.key) byCiv[r.key] = r; });
   // A state is reporting once a contested race there has real votes. (Uncontested races can show 100% before polls close:
@@ -638,10 +638,26 @@ async function poll(){
   const ok = got.filter(g => g.status === 'fulfilled');
   failCount = ok.length === got.length ? 0 : failCount + 1;
   pickSource();
-  if (SRC === 'civic'){ ok.forEach(g => ingest(g.value)); if (ok.length) lastOk = new Date(); }
+  if (SRC === 'civic'){ got.forEach((g, i) => { if (g.status === 'fulfilled') ingest(g.value, names[i] === 'ok'); }); if (ok.length) lastOk = new Date(); }
   refresh(); setStatus(); postState();
   cycle++;
   schedulePoll(POLL_S * 1000);   // every minute, failing or not, so the board notices civicAPI coming back
+  const okAt = names.indexOf('ok');
+  if (okAt >= 0 && got[okAt].status !== 'fulfilled') retryOk(1, ok.length === got.length - 1);
+}
+// The Oklahoma list matters most and is the one civicAPI drops first under load (503 DATABASE_TIMEOUT on election night),
+// so when it fails, try it alone again 15 seconds later (twice at most) instead of waiting for the next pass.
+let okRetryT = null;
+function retryOk(n, onlyMiss){
+  clearTimeout(okRetryT);
+  okRetryT = setTimeout(async () => {
+    if (forceEH || SRC !== 'civic') return;
+    try {
+      const list = await getRaces(QUERIES.ok);
+      ingest(list, true); lastOk = new Date(); if (onlyMiss) failCount = 0;
+      refresh(); setStatus(); postState();
+    } catch (e) { if (n < 2) retryOk(n + 1, onlyMiss); }
+  }, 15000);
 }
 
 // ----- backup results: ElectionHub -----
