@@ -691,17 +691,23 @@ let pollT = null;
 const schedulePoll = ms => { clearTimeout(pollT); pollT = setTimeout(poll, ms); };
 async function poll(){
   if (forceEH){ schedulePoll(POLL_S * 1000); return; }   // the booth switched to the backup by hand: leave civicAPI alone
-  const names = Object.keys(QUERIES).filter(k => k !== 'house' || cycle % 2 === 0);   // House list is big: every other pass
-  const got = await Promise.allSettled(names.map(k => getRaces(QUERIES[k])));
-  const ok = got.filter(g => g.status === 'fulfilled');
-  failCount = ok.length === got.length ? 0 : failCount + 1;
-  pickSource();
-  if (SRC === 'civic'){ got.forEach((g, i) => { if (g.status === 'fulfilled') ingest(g.value, names[i] === 'ok'); }); if (ok.length) lastOk = new Date(); }
-  refresh(); setStatus(); postState();
+  // One list at a time, each tried twice: civicAPI drops parallel requests under election-night load (503 DATABASE_TIMEOUT),
+  // and each list goes on the board as soon as it lands.
+  const names = ['sen', 'house', 'gov', 'ok'].filter(k => QUERIES[k]);
+  let fails = 0;
+  for (const k of names){
+    let list = null;
+    for (let n = 0; n < 2 && !list && !forceEH; n++){
+      try { list = await getRaces(QUERIES[k]); } catch (e) { if (n === 0) await sleep(5000); }
+    }
+    if (forceEH) break;
+    if (!list){ fails++; continue; }
+    if (SRC === 'civic'){ ingest(list, k === 'ok'); lastOk = new Date(); refresh(); setStatus(); }
+  }
+  failCount = fails ? failCount + 1 : 0;
+  pickSource(); refresh(); setStatus(); postState();
   cycle++;
-  schedulePoll(POLL_S * 1000);   // every minute, failing or not, so the board notices civicAPI coming back
-  const okAt = names.indexOf('ok');
-  if (okAt >= 0 && got[okAt].status !== 'fulfilled') retryOk(1, ok.length === got.length - 1);
+  schedulePoll(POLL_S * 1000);   // a minute after each pass, failing or not, so the board notices civicAPI coming back
 }
 // The Oklahoma list matters most and is the one civicAPI drops first under load (503 DATABASE_TIMEOUT on election night),
 // so when it fails, try it alone again 15 seconds later (twice at most) instead of waiting for the next pass.
@@ -786,6 +792,7 @@ function ehWinner(x){   // the side that won (or leads)
 }
 const ehRep = x => { const v = parseFloat(String(x.reporting == null ? '' : x.reporting).replace(/[^\d.]/g, '')); return isFinite(v) ? Math.min(100, v) : null; };
 function applyEH(r, x, st){
+  if (st === 'OK' && relayFresh()) return;   // the State Election Board relay is ahead of the backup on Oklahoma
   const used = new Set(), pairs = [];
   for (const [p, s] of [['D', ehSide(x.dem)], ['R', ehSide(x.rep)]]){
     if (!s) continue;
@@ -805,6 +812,7 @@ function applyEH(r, x, st){
   r.fin = false; r.seen = true; ehApplied++;
 }
 function applyEHMeasure(r, x){
+  if (relayFresh()) return;   // (Oklahoma state questions: the relay has them)
   const Y = r.cands.find(c => c.n === 'YES'), N = r.cands.find(c => c.n === 'NO'); if (!Y || !N) return;
   for (const [c, s] of [[Y, x.yes], [N, x.no]]) if (s && typeof s === 'object'){ c.v = +s.votes || 0; c.pct = s.pct == null || !isFinite(+s.pct) ? null : +s.pct; }
   const rep = ehRep(x); if (rep != null) r.rep = rep;
