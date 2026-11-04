@@ -626,7 +626,7 @@ function ingest(list, full){   // full: this is the whole Oklahoma list (the nat
     const key = ch && (seatKey(ch, ch === 'S' ? x.province : x.district) || 'id:' + x.id);
     if (ch && !NAT[ch].get(key)) NAT[ch].set(key, natCall(x));   // a called seat stays called (it may have come from the backup)
     const r = x.province === 'OK' ? byCiv[x.id] : byCiv[ADAPT.natKey(x)];
-    if (r) applyRecord(r, x);
+    if (r && !(x.province === 'OK' && relayFresh())) applyRecord(r, x);   // the relay's Oklahoma numbers win while it's fresh
   }
 }
 let pollT = null;
@@ -648,6 +648,27 @@ async function poll(){
 // The Oklahoma list matters most and is the one civicAPI drops first under load (503 DATABASE_TIMEOUT on election night),
 // so when it fails, try it alone again 15 seconds later (twice at most) instead of waiting for the next pass.
 let okRetryT = null;
+// ----- Oklahoma relay: if civicAPI is down, Claude copies the State Election Board's statewide results into okrelay.json
+// (site root) every few minutes. The board reads it every 30 seconds and applies it while it's under 20 minutes old.
+let relayAt = 0, relayDone = '';
+const relayFresh = () => Date.now() - relayAt < 20 * 60 * 1000;
+async function relayPoll(){
+  try {
+    const res = await fetch('okrelay.json?t=' + Date.now(), {cache:'no-store'});
+    const j = res.ok ? await res.json() : null;
+    const at = j && Date.parse(j.at);
+    if (at && j.at !== relayDone && Date.now() - at < 20 * 60 * 1000){
+      relayDone = j.at; relayAt = at;
+      for (const x of j.races || []){
+        const r = BY_ID[x.id]; if (!r) continue;
+        const tot = (x.cands || []).reduce((a, c) => a + (+c.votes || 0), 0);   // the tiles show shares, so work them out
+        applyRecord(r, {province:'OK', percent_reporting:x.rep, candidates:(x.cands || []).map(c => ({...c, percent: tot ? c.votes / tot * 100 : null}))});
+      }
+      setCredit(); refresh(); setStatus(); postState();
+    }
+  } catch (e) {}
+  setTimeout(relayPoll, 30000);
+}
 function retryOk(n, onlyMiss){
   clearTimeout(okRetryT);
   okRetryT = setTimeout(async () => {
@@ -762,7 +783,7 @@ function ingestEH(cong, sw, gov, leg, ini){
   }
 }
 function setCredit(){
-  const src = SRC === 'eh' ? 'ELECTIONHUB.ORG' : 'CIVICAPI.ORG';
+  const src = SRC === 'eh' ? 'ELECTIONHUB.ORG' : relayFresh() ? 'OK ELECTION BOARD' : 'CIVICAPI.ORG';
   document.querySelector('.credit').textContent = 'RESULTS: ' + src;
   $('marq').textContent = MARQ.replace('{SRC}', src).repeat(4);
 }
@@ -776,6 +797,7 @@ function setStatus(){
     if (!ehOk){ el.className = ehFails ? 'tag err' : 'tag wait'; el.textContent = ehFails ? 'RESULTS FEED UNREACHABLE · RETRYING' : 'CONNECTING TO RESULTS'; return; }
     el.className = ehFails ? 'tag err' : 'tag live'; el.textContent = ehFails ? `RESULTS DELAYED · LAST ${hhmm(ehOk)}` : `${tag} · UPDATED ${hhmm(ehOk)}`; return;
   }
+  if (relayFresh() && (failCount || !lastOk)){ el.className = 'tag live'; el.textContent = `${tag} · UPDATED ${hhmm(new Date(relayAt))}`; return; }
   if (!lastOk){ el.className = failCount ? 'tag err' : 'tag wait'; el.textContent = failCount ? 'RESULTS FEED UNREACHABLE · RETRYING' : 'CONNECTING TO RESULTS'; return; }
   if (failCount){ el.className = 'tag err'; el.textContent = `RESULTS DELAYED · LAST ${hhmm(lastOk)}`; return; }
   el.className = 'tag live'; el.textContent = `${tag} · UPDATED ${hhmm(lastOk)}`;
@@ -2159,6 +2181,7 @@ $('bDemo').setAttribute('aria-pressed', CFG.demo); $('demoChip').hidden = !CFG.d
 setStatus(); updateCounts(); setScene(scene);
 startTimers(true);
 if (LIVE) poll();   // (pollEH starts only if the backup is needed)
+if (MODE === 'live') relayPoll();
 showCtl(); clearTimeout(ctlT); ctlT = setTimeout(() => ctl.classList.remove('on'), 7000);
 })();
 </script>
