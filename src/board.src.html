@@ -985,21 +985,27 @@ function schedule(s){
   const [a, b] = T().swap, k = s.pin ? 2 : 1;          // pinned tiles re-flip less often
   s.timer = setTimeout(() => swapSlot(s), rand(a, b) * k);
 }
+// Waits for a set of flips, but never for long: a flip that's cut short (its promise rejects) or never ends can't strand
+// the tiles. (On Nov. 3 a stuck flip left every tile folded flat with no Congress board behind it.)
+const settle = (ps, ms) => Promise.race([Promise.allSettled(ps), sleep(ms)]);
 async function swapSlot(s){
   if (s.busy || boardOn){ schedule(s); return; }
   const r = s.pin || pickRace(); if (!r){ schedule(s); return; }
   s.busy = true;
-  await flipOut(s.el); setRace(s, r); await flipIn(s.el);
-  s.busy = false; schedule(s);
+  try { await settle([flipOut(s.el)], 1200); setRace(s, r); await settle([flipIn(s.el)], 1200); }
+  finally { s.el.style.transform = ''; s.busy = false; schedule(s); }
 }
 // After the Oklahoma list is rebuilt from the live feed, every tile flips to the new set.
 async function reflipAll(){
   while (boardOn || calling || mediaOn) await sleep(200);
   slots.forEach(s => { s.busy = true; s.race = null; });
-  await Promise.all(slots.map((s, i) => flipOut(s.el, ((i%5) + Math.floor(i/5)) * 60)));
-  slots.forEach(s => setRace(s, s.pin || pickRace() || RACES[0]));
-  await Promise.all(slots.map((s, i) => flipIn(s.el, ((i%5) + Math.floor(i/5)) * 60)));
-  slots.forEach(s => { s.busy = false; schedule(s); });
+  try {
+    await settle(slots.map((s, i) => flipOut(s.el, ((i%5) + Math.floor(i/5)) * 60)), 1500);
+    slots.forEach(s => setRace(s, s.pin || pickRace() || RACES[0]));
+    await settle(slots.map((s, i) => flipIn(s.el, ((i%5) + Math.floor(i/5)) * 60)), 1500);
+  } finally {
+    slots.forEach(s => { if (!s.race) setRace(s, s.pin || pickRace() || RACES[0]); s.el.style.transform = ''; s.busy = false; schedule(s); });
+  }
 }
 
 // ----- race calls -----
@@ -1069,30 +1075,35 @@ async function playCall(r){
 let boardOn = false;
 async function showBoard(){
   if (boardOn || scene === 'show') return;
-  if (calling || queue.length || sponStep >= 0 || mediaOn || cheerOn){ setTimeout(showBoard, 3000); return; }
+  if (calling || queue.length || sponStep >= 0 || mediaOn || cheerOn || slots.some(s => s.busy)){ setTimeout(showBoard, 3000); return; }
   boardOn = true;
-  while (slots.some(s => s.busy)) await sleep(80);
-  const {s, h} = tally();
-  ['bSD','bSR','bHD','bHR'].forEach(id => $(id).textContent = '');
-  paintSeats($('bSSeats'), 0, 0, 0); paintSeats($('bHSeats'), 0, 0, 0);
-  await Promise.all(slots.map((sl, i) => flipOut(sl.el, ((i%5) + Math.floor(i/5)) * 70)));
-  grid.style.visibility = 'hidden'; board.hidden = false;
   const rows = [...board.children];
-  rows.forEach(r => r.style.transform = 'rotateX(-90deg)');
-  await Promise.all(rows.map((row, i) => (RM ? Promise.resolve() :
-    row.animate([{transform:'rotateX(-90deg)'},{transform:'rotateX(6deg)', offset:.7},{transform:'rotateX(0deg)'}], {duration:560, delay:i*200, easing:'ease-out', fill:'backwards'}).finished)
-    .then(() => { row.style.transform = ''; })));
-  paintSeats($('bSSeats'), s.D, s.I, s.R, 'sweep'); paintSeats($('bHSeats'), h.D, h.I, h.R, 'sweep');
-  await sleep(RM ? 0 : 700);
-  setNum($('bSD'), s.D); setNum($('bSR'), s.R); setNum($('bHD'), h.D); setNum($('bHR'), h.R);
-  await sleep(T().hold);
-  await Promise.all(rows.map((row, i) => flipOut(row, i*140)));
-  board.hidden = true; rows.forEach(r => r.style.transform = '');
-  grid.style.visibility = '';
-  await Promise.all(slots.map((sl, i) => flipIn(sl.el, ((i%5) + Math.floor(i/5)) * 70)));
-  boardOn = false;
-  slots.forEach(sl => { if (sl.race) paint(sl, false); });
-  pump();
+  try {
+    const {s, h} = tally();
+    ['bSD','bSR','bHD','bHR'].forEach(id => $(id).textContent = '');
+    paintSeats($('bSSeats'), 0, 0, 0); paintSeats($('bHSeats'), 0, 0, 0);
+    await settle(slots.map((sl, i) => flipOut(sl.el, ((i%5) + Math.floor(i/5)) * 70)), 1500);
+    grid.style.visibility = 'hidden'; board.hidden = false;
+    rows.forEach(r => r.style.transform = 'rotateX(-90deg)');
+    await settle(rows.map((row, i) => (RM ? Promise.resolve() :
+      row.animate([{transform:'rotateX(-90deg)'},{transform:'rotateX(6deg)', offset:.7},{transform:'rotateX(0deg)'}], {duration:560, delay:i*200, easing:'ease-out', fill:'backwards'}).finished)
+      .then(() => { row.style.transform = ''; })), 2500);
+    rows.forEach(r => { r.style.transform = ''; });
+    paintSeats($('bSSeats'), s.D, s.I, s.R, 'sweep'); paintSeats($('bHSeats'), h.D, h.I, h.R, 'sweep');
+    await sleep(RM ? 0 : 700);
+    setNum($('bSD'), s.D); setNum($('bSR'), s.R); setNum($('bHD'), h.D); setNum($('bHR'), h.R);
+    await sleep(T().hold);
+    await settle(rows.map((row, i) => flipOut(row, i*140)), 1500);
+  } catch (e) {
+  } finally {   // whatever happened above, the tiles come back
+    board.hidden = true; rows.forEach(r => r.style.transform = '');
+    grid.style.visibility = '';
+    await settle(slots.map((sl, i) => flipIn(sl.el, ((i%5) + Math.floor(i/5)) * 70)), 1500);
+    slots.forEach(sl => { sl.el.style.transform = ''; });
+    boardOn = false;
+    slots.forEach(sl => { if (sl.race) paint(sl, false); });
+    pump();
+  }
 }
 
 // ----- phone pushes: photos and short clips sent from the "Push to screen" page (push.html) -----
